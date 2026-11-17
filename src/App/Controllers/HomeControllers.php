@@ -36,18 +36,17 @@ class HomeControllers
         $error = null;
         $fieldErrors = [];
         $email = '';
-        $role = 'Customer';
+        $mode = strtolower(trim((string) ($_GET['mode'] ?? 'signin')));
 
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             $email = trim((string) ($_POST['email'] ?? ''));
             $password = (string) ($_POST['password'] ?? '');
-            $role = trim((string) ($_POST['role'] ?? 'Customer'));
             $mode = strtolower(trim((string) ($_POST['mode'] ?? 'signin')));
             $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH'])
                 || str_contains((string) ($_SERVER['HTTP_ACCEPT'] ?? ''), 'application/json');
 
             try {
-                if ($mode === 'register' && strcasecmp($role, 'Admin') !== 0) {
+                if ($mode === 'register') {
                     $authenticatedUser = $this->userModel->register([
                         'fullName'    => trim((string) ($_POST['full_name'] ?? $_POST['fullName'] ?? '')),
                         'email'       => $email,
@@ -56,7 +55,11 @@ class HomeControllers
                         'address'     => trim((string) ($_POST['address'] ?? '')),
                     ]);
                 } else {
-                    $authenticatedUser = $this->userModel->authenticate($email, $password, $role);
+                    $authenticatedUser = $this->userModel->authenticate($email, $password, null);
+                }
+
+                if (session_status() === PHP_SESSION_ACTIVE) {
+                    @session_regenerate_id(true);
                 }
                 $_SESSION['user'] = $authenticatedUser;
                 $targetRole = strcasecmp((string) ($authenticatedUser['role'] ?? ''), 'Admin') === 0 ? 'admin' : 'client';
@@ -110,6 +113,18 @@ class HomeControllers
     public function home(): void
     {
         $user = currentUser();
+        if ($user === null || empty($user['email']) || empty($user['role'])) {
+            redirect('index.php');
+        }
+
+        $actualRole = strcasecmp((string) ($user['role'] ?? ''), 'Admin') === 0 ? 'admin' : 'client';
+        $requestedRole = strtolower(trim((string) ($_GET['role'] ?? '')));
+        if ($requestedRole === 'admin' && $actualRole !== 'admin') {
+            redirect('home.php?role=client');
+        }
+        if ($requestedRole === 'client' && $actualRole === 'admin') {
+            redirect('home.php?role=admin');
+        }
 
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['action'] ?? '') === 'checkout') {
             $customerEmail = trim((string) ($_POST['customerEmail'] ?? ($user['email'] ?? '')));

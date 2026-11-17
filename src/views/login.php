@@ -6,13 +6,10 @@
  * @var string|null $error
  * @var array<string, string> $fieldErrors
  * @var string $email
- * @var string $role
+ * @var string $mode
  */
-$activeRole = ($role ?? 'Customer') === 'Admin' ? 'Admin' : 'Customer';
-$defaultEmail = !empty($email)
-    ? $email
-    : ($activeRole === 'Admin' ? 'admin@lilliarowena.com' : 'rowena.vance@vancearchitects.com');
-$defaultPass = $activeRole === 'Admin' ? 'MasterJoinery#01' : 'ClientPass2025!';
+$submittedEmail = trim((string) ($email ?? ''));
+$activeMode = strtolower(trim((string) ($mode ?? 'signin'))) === 'register' ? 'register' : 'signin';
 ?>
 <!doctype html>
 <html lang="en">
@@ -74,41 +71,23 @@ $defaultPass = $activeRole === 'Admin' ? 'MasterJoinery#01' : 'ClientPass2025!';
         <!-- Right Authentication Form Column -->
         <section class="login-form-panel">
           <div style="max-width: 440px; width: 100%; margin: 0 auto;">
-            <h2 class="lr-serif" style="font-size: 1.85rem; margin: 0 0 0.4rem; color: #0F172A;">
+            <h2 id="login-heading-title" class="lr-serif" style="font-size: 1.85rem; margin: 0 0 0.4rem; color: #0F172A;">
               Sign In to Your Account
             </h2>
-            <p style="font-size: 0.9rem; color: #475569; margin: 0 0 1.5rem;">
-              Select your portal role below or use the pre-filled demo credentials.
+            <p id="login-heading-subtitle" style="font-size: 0.9rem; color: #475569; margin: 0 0 1.25rem;">
+              Access your orders, saved delivery address, and personal vouchers, or create a new customer account.
             </p>
 
-            <!-- Role Switcher -->
-            <div class="role-switcher">
-              <button
-                type="button"
-                class="role-btn <?= $activeRole === 'Customer' ? 'active' : '' ?>"
-                data-role-tab="Customer"
-              >
-                Client Portal (`Customer`)
-              </button>
-              <button
-                type="button"
-                class="role-btn <?= $activeRole === 'Admin' ? 'active' : '' ?>"
-                data-role-tab="Admin"
-              >
-                Admin Console (`Admin`)
-              </button>
-            </div>
-
-            <!-- Customer Auth Mode Toggle: Sign In vs Create Account -->
+            <!-- Auth Mode Toggle: Sign In vs Create Account -->
             <div
               id="customer-auth-mode-tabs"
-              style="display: <?= $activeRole === 'Admin' ? 'none' : 'flex' ?>; gap: 0.5rem; margin-bottom: 1.1rem; background: #F8FAFC; padding: 0.3rem; border-radius: 0.75rem; border: 1px solid #E2E8F0;"
+              style="display: flex; gap: 0.5rem; margin-bottom: 1.1rem; background: #F8FAFC; padding: 0.3rem; border-radius: 0.75rem; border: 1px solid #E2E8F0;"
             >
               <button
                 type="button"
                 id="auth-mode-signin"
                 data-auth-mode="signin"
-                style="flex: 1; padding: 0.45rem 0.75rem; border-radius: 0.5rem; border: none; font-size: 0.8rem; font-weight: 700; cursor: pointer; background: #0F172A; color: #FFFFFF;"
+                style="flex: 1; padding: 0.45rem 0.75rem; border-radius: 0.5rem; border: none; font-size: 0.8rem; font-weight: 700; cursor: pointer; background: <?= $activeMode === 'signin' ? '#0F172A' : 'transparent' ?>; color: <?= $activeMode === 'signin' ? '#FFFFFF' : '#475569' ?>;"
               >
                 Sign In
               </button>
@@ -116,31 +95,9 @@ $defaultPass = $activeRole === 'Admin' ? 'MasterJoinery#01' : 'ClientPass2025!';
                 type="button"
                 id="auth-mode-register"
                 data-auth-mode="register"
-                style="flex: 1; padding: 0.45rem 0.75rem; border-radius: 0.5rem; border: none; font-size: 0.8rem; font-weight: 700; cursor: pointer; background: transparent; color: #475569;"
+                style="flex: 1; padding: 0.45rem 0.75rem; border-radius: 0.5rem; border: none; font-size: 0.8rem; font-weight: 700; cursor: pointer; background: <?= $activeMode === 'register' ? '#0F172A' : 'transparent' ?>; color: <?= $activeMode === 'register' ? '#FFFFFF' : '#475569' ?>;"
               >
                 Create Account
-              </button>
-            </div>
-
-            <!-- Demo Credentials Helper -->
-            <div
-              id="demo-credentials-box"
-              style="background: rgba(224, 242, 254, 0.75); border: 1px solid #BAE6FD; border-radius: 0.75rem; padding: 0.75rem 1rem; margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;"
-            >
-              <div>
-                <div class="lr-mono" style="font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; color: #0284C7;">
-                  Quick Demo Credentials
-                </div>
-                <div id="demo-email-preview" class="lr-mono" style="font-size: 0.78rem; color: #0F172A; margin-top: 0.15rem;">
-                  <?= e($defaultEmail) ?>
-                </div>
-              </div>
-              <button
-                type="button"
-                id="fill-demo-credentials"
-                style="background: #FFFFFF; border: 1px solid #7DD3FC; color: #0095FF; border-radius: 0.5rem; padding: 0.4rem 0.75rem; font-size: 0.75rem; font-weight: 700; cursor: pointer;"
-              >
-                Auto-Fill
               </button>
             </div>
 
@@ -153,18 +110,17 @@ $defaultPass = $activeRole === 'Admin' ? 'MasterJoinery#01' : 'ClientPass2025!';
               <?= e($error ?? '') ?>
             </div>
 
-            <!-- Login / Registration Form -->
+            <!-- Unified Login / Registration Form -->
             <form id="lr-login-form" method="post" action="src/index.php" novalidate>
-              <input type="hidden" id="login-role" name="role" value="<?= e($activeRole) ?>" />
-              <input type="hidden" id="login-mode" name="mode" value="signin" />
+              <input type="hidden" id="login-mode" name="mode" value="<?= e($activeMode) ?>" />
 
-              <div id="register-name-group" class="form-group" style="display: none;">
+              <div id="register-name-group" class="form-group" style="display: <?= $activeMode === 'register' ? 'block' : 'none' ?>;">
                 <label class="form-label" for="register-name">Full Name</label>
                 <input
                   id="register-name"
                   name="full_name"
                   type="text"
-                  class="form-input"
+                  class="form-input <?= isset($fieldErrors['fullName']) ? 'has-error' : '' ?>"
                   placeholder="Enter your full name"
                 />
               </div>
@@ -176,7 +132,7 @@ $defaultPass = $activeRole === 'Admin' ? 'MasterJoinery#01' : 'ClientPass2025!';
                   name="email"
                   type="email"
                   class="form-input <?= isset($fieldErrors['email']) ? 'has-error' : '' ?>"
-                  value="<?= e($defaultEmail) ?>"
+                  value="<?= e($submittedEmail) ?>"
                   placeholder="you@example.com"
                   required
                 />
@@ -189,36 +145,36 @@ $defaultPass = $activeRole === 'Admin' ? 'MasterJoinery#01' : 'ClientPass2025!';
                   name="password"
                   type="password"
                   class="form-input <?= isset($fieldErrors['password']) ? 'has-error' : '' ?>"
-                  value="<?= e($defaultPass) ?>"
+                  value=""
                   placeholder="At least 6 characters"
                   required
                 />
               </div>
 
-              <div id="register-phone-group" class="form-group" style="display: none;">
+              <div id="register-phone-group" class="form-group" style="display: <?= $activeMode === 'register' ? 'block' : 'none' ?>;">
                 <label class="form-label" for="register-phone">Phone Number</label>
                 <input
                   id="register-phone"
                   name="phone_number"
                   type="tel"
-                  class="form-input"
+                  class="form-input <?= isset($fieldErrors['phoneNumber']) ? 'has-error' : '' ?>"
                   placeholder="e.g. +1 (212) 555-0148"
                 />
               </div>
 
-              <div id="register-address-group" class="form-group" style="display: none;">
+              <div id="register-address-group" class="form-group" style="display: <?= $activeMode === 'register' ? 'block' : 'none' ?>;">
                 <label class="form-label" for="register-address">Address</label>
                 <input
                   id="register-address"
                   name="address"
                   type="text"
-                  class="form-input"
+                  class="form-input <?= isset($fieldErrors['address']) ? 'has-error' : '' ?>"
                   placeholder="Enter your street address, city &amp; zip"
                 />
               </div>
 
               <button type="submit" id="login-submit-btn" class="btn-submit">
-                <?= $activeRole === 'Admin' ? 'Sign In to Admin Console →' : 'Sign In to Client Portal →' ?>
+                <?= $activeMode === 'register' ? 'Create Account & Continue →' : 'Sign In to My Account →' ?>
               </button>
             </form>
           </div>

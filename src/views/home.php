@@ -5,10 +5,25 @@
  *
  * @var array<string, mixed>|null $user
  */
+if (session_status() === PHP_SESSION_NONE) {
+    @session_start();
+}
+if (!isset($user) || !is_array($user)) {
+    $user = isset($_SESSION['user']) && is_array($_SESSION['user']) ? $_SESSION['user'] : null;
+}
+if ($user === null || empty($user['email']) || empty($user['role'])) {
+    header('Location: index.php');
+    exit;
+}
+$verifiedRole = strcasecmp((string) ($user['role'] ?? ''), 'Admin') === 0 ? 'admin' : 'client';
+if (isset($_GET['role']) && strtolower(trim((string) $_GET['role'])) === 'admin' && $verifiedRole !== 'admin') {
+    header('Location: home.php?role=client');
+    exit;
+}
 $sessionPayload = [
-    'email' => $user['email'] ?? (($_GET['role'] ?? 'client') === 'admin' ? 'admin@lilliarowena.com' : 'rowena.vance@vancearchitects.com'),
-    'name'  => $user['fullName'] ?? ($user['name'] ?? (($_GET['role'] ?? 'client') === 'admin' ? 'Lillia Mercier (Business Owner)' : 'Rowena Vance')),
-    'role'  => strcasecmp((string) ($user['role'] ?? ($_GET['role'] ?? 'client')), 'Admin') === 0 || ($_GET['role'] ?? '') === 'admin' ? 'admin' : 'client',
+    'email' => (string) $user['email'],
+    'name'  => (string) ($user['fullName'] ?? ($user['name'] ?? $user['email'])),
+    'role'  => $verifiedRole,
 ];
 ?>
 <!doctype html>

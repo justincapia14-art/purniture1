@@ -65,26 +65,33 @@ export function createDashboard({
 }) {
 function initDashboardPage() {
   const params = new URLSearchParams(window.location.search);
-  const urlRole = params.get('role');
+  const urlRole = (params.get('role') || '').toLowerCase();
 
-  let activeUser = state.sessionUser;
-  if ((urlRole === 'admin' || urlRole === 'client') && (!activeUser || activeUser.role !== urlRole)) {
-    activeUser =
-      urlRole === 'admin'
-        ? { email: 'admin@lilliarowena.com', name: 'Lillia Mercier (Business Owner)', role: 'admin' }
-        : { email: 'rowena.vance@vancearchitects.com', name: 'Rowena Vance', role: 'client' };
-    saveSessionUserToServer(activeUser);
-  }
+  const activeUser = state.sessionUser;
 
-  // If still not logged in, redirect to src/index.php (on PHP) or login.html
-  if (!activeUser) {
+  // Require an authenticated session; never auto-login from URL query parameters
+  if (!activeUser || !activeUser.email || !activeUser.role) {
     window.location.href = window.location.pathname.endsWith('.php')
       ? new URL('index.php', window.location.href).href
       : 'login.html';
     return;
   }
 
-  const isAdmin = activeUser.role === 'admin';
+  const isAdmin = String(activeUser.role).toLowerCase() === 'admin';
+
+  // Prevent unauthorized access to admin pages via direct URL (?role=admin)
+  if (urlRole === 'admin' && !isAdmin) {
+    window.location.replace(
+      window.location.pathname.endsWith('.php') ? 'home.php?role=client' : 'dashboard.html?role=client'
+    );
+    return;
+  }
+  if (urlRole === 'client' && isAdmin) {
+    window.location.replace(
+      window.location.pathname.endsWith('.php') ? 'home.php?role=admin' : 'dashboard.html?role=admin'
+    );
+    return;
+  }
   const topHeader = document.getElementById('portal-top-header');
   const clientWrapper = document.getElementById('client-portal-wrapper');
   const clientView = document.getElementById('client-portal-view');

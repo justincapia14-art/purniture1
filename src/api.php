@@ -309,24 +309,26 @@ try {
 
             case 'login_user':
                 $userModel = new User($db);
-                $roleParam = trim((string) ($payload['role'] ?? 'Customer'));
-                $expectedRole = strcasecmp($roleParam, 'admin') === 0 ? 'Admin' : 'Customer';
                 $authenticated = $userModel->authenticate(
                     (string) ($payload['email'] ?? ''),
                     (string) ($payload['password'] ?? ''),
-                    $expectedRole
+                    null
                 );
+                $isAdmin = strcasecmp((string) ($authenticated['role'] ?? ''), 'Admin') === 0;
                 $store = $db->readStore();
                 $avatarUrl = (string) ($authenticated['avatar'] ?? '');
                 $sessionObj = [
                     'email'  => $authenticated['email'],
                     'name'   => $authenticated['fullName'] ?? $authenticated['name'] ?? $authenticated['email'],
-                    'role'   => $expectedRole === 'Admin' ? 'admin' : 'client',
+                    'role'   => $isAdmin ? 'admin' : 'client',
                     'avatar' => $avatarUrl,
                 ];
+                if (session_status() === PHP_SESSION_ACTIVE) {
+                    @session_regenerate_id(true);
+                }
                 $_SESSION['user'] = $sessionObj;
                 $store['sessionUser'] = $sessionObj;
-                if ($expectedRole === 'Customer') {
+                if (!$isAdmin) {
                     $isDemoRowena = strtolower((string) $authenticated['email']) === 'rowena.vance@vancearchitects.com';
                     $store['customerProfile'] = [
                         'name'    => $sessionObj['name'],

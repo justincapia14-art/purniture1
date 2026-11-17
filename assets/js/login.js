@@ -14,15 +14,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const addressInput = document.getElementById('register-address');
   const emailInput = document.getElementById('login-email');
   const passwordInput = document.getElementById('login-password');
-  const roleInput = document.getElementById('login-role');
   const modeInput = document.getElementById('login-mode');
-  const roleButtons = document.querySelectorAll('[data-role-tab]');
   const authModeTabsContainer = document.getElementById('customer-auth-mode-tabs');
   const signInModeBtn = document.getElementById('auth-mode-signin');
   const registerModeBtn = document.getElementById('auth-mode-register');
-  const demoBox = document.getElementById('demo-credentials-box');
-  const fillDemoBtn = document.getElementById('fill-demo-credentials');
-  const demoEmailLabel = document.getElementById('demo-email-preview');
   const errorBanner = document.getElementById('login-error-banner');
   const submitButton = document.getElementById('login-submit-btn');
   const headingTitle = document.getElementById('login-heading-title');
@@ -31,22 +26,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const activeSessionUser = document.getElementById('login-active-session-user');
   const activeSessionActions = document.getElementById('login-active-session-actions');
 
-  const DEMO_CREDENTIALS = {
-    Customer: {
-      email: 'rowena.vance@vancearchitects.com',
-      name: 'Rowena Vance',
-      password: 'ClientPass2025!',
-      buttonLabel: 'Sign In to My Account →',
-    },
-    Admin: {
-      email: 'admin@lilliarowena.com',
-      name: 'Lillia Mercier (Owner)',
-      password: 'MasterJoinery#01',
-      buttonLabel: 'Sign In to Admin Console →',
-    },
-  };
-
-  let currentRole = 'Customer';
   let currentMode = 'signin'; // 'signin' | 'register'
   let serverStoreCache = null;
   const API_ENDPOINT = window.location.pathname.includes('/src/') ? 'api.php' : 'src/api.php';
@@ -111,19 +90,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateAuthUI() {
-    const isAdmin = currentRole === 'Admin';
-    const isRegister = !isAdmin && currentMode === 'register';
+    const isRegister = currentMode === 'register';
 
-    if (roleInput) roleInput.value = currentRole;
     if (modeInput) modeInput.value = isRegister ? 'register' : 'signin';
 
-    roleButtons.forEach((btn) => {
-      const isSelected = btn.getAttribute('data-role-tab') === currentRole;
-      btn.classList.toggle('active', isSelected);
-    });
-
     if (authModeTabsContainer) {
-      authModeTabsContainer.style.display = isAdmin ? 'none' : 'flex';
+      authModeTabsContainer.style.display = 'flex';
     }
 
     if (signInModeBtn && registerModeBtn) {
@@ -142,68 +114,28 @@ document.addEventListener('DOMContentLoaded', () => {
     if (addressGroup) {
       addressGroup.style.display = isRegister ? 'block' : 'none';
     }
-    if (demoBox) {
-      demoBox.style.display = isRegister ? 'none' : 'flex';
-    }
 
-    if (isAdmin) {
-      if (headingTitle) headingTitle.textContent = 'Admin Console Sign In';
-      if (headingSubtitle) {
-        headingSubtitle.textContent =
-          'Sign in with administrator credentials to manage products, workshop materials & stock, vouchers, and orders.';
-      }
-      const preset = DEMO_CREDENTIALS.Admin;
-      if (emailInput) emailInput.value = preset.email;
-      if (passwordInput) passwordInput.value = preset.password;
-      if (demoEmailLabel) demoEmailLabel.textContent = preset.email;
-      if (submitButton) submitButton.textContent = preset.buttonLabel;
-    } else if (isRegister) {
+    if (isRegister) {
       if (headingTitle) headingTitle.textContent = 'Create Your Account';
       if (headingSubtitle) {
         headingSubtitle.textContent =
           'Enter your full name, email, password, phone number, and delivery address to create your customer account.';
       }
-      if (nameInput && !nameInput.value) nameInput.value = '';
-      if (phoneInput && !phoneInput.value) phoneInput.value = '';
-      if (addressInput && !addressInput.value) addressInput.value = '';
-      if (emailInput && emailInput.value === DEMO_CREDENTIALS.Admin.email) emailInput.value = '';
-      if (passwordInput && passwordInput.value === DEMO_CREDENTIALS.Admin.password) passwordInput.value = '';
       if (submitButton) submitButton.textContent = 'Create Account & Continue →';
     } else {
       if (headingTitle) headingTitle.textContent = 'Sign In to Your Account';
       if (headingSubtitle) {
         headingSubtitle.textContent =
-          'Sign in to view your orders, manage your shopping cart, and redeem personal discount vouchers.';
+          'Access your orders, saved delivery address, and personal vouchers, or create a new customer account.';
       }
-      const preset = DEMO_CREDENTIALS.Customer;
-      if (emailInput) emailInput.value = preset.email;
-      if (passwordInput) passwordInput.value = preset.password;
-      if (demoEmailLabel) demoEmailLabel.textContent = preset.email;
-      if (submitButton) submitButton.textContent = preset.buttonLabel;
+      if (submitButton) submitButton.textContent = 'Sign In to My Account →';
     }
 
     hideError();
   }
 
-  function setRole(role) {
-    currentRole = role === 'Admin' ? 'Admin' : 'Customer';
-    if (currentRole === 'Admin') {
-      currentMode = 'signin';
-    }
-    updateAuthUI();
-  }
-
   function setMode(mode) {
     currentMode = mode === 'register' ? 'register' : 'signin';
-    if (currentMode === 'register') {
-      currentRole = 'Customer';
-      if (emailInput && emailInput.value === DEMO_CREDENTIALS.Customer.email) {
-        emailInput.value = '';
-      }
-      if (passwordInput && passwordInput.value === DEMO_CREDENTIALS.Customer.password) {
-        passwordInput.value = '';
-      }
-    }
     updateAuthUI();
   }
 
@@ -222,13 +154,6 @@ document.addEventListener('DOMContentLoaded', () => {
     errorBanner.style.display = 'none';
   }
 
-  roleButtons.forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const role = btn.getAttribute('data-role-tab') || 'Customer';
-      setRole(role);
-    });
-  });
-
   if (signInModeBtn) {
     signInModeBtn.addEventListener('click', () => setMode('signin'));
   }
@@ -236,20 +161,10 @@ document.addEventListener('DOMContentLoaded', () => {
     registerModeBtn.addEventListener('click', () => setMode('register'));
   }
 
-  if (fillDemoBtn) {
-    fillDemoBtn.addEventListener('click', () => {
-      currentMode = 'signin';
-      updateAuthUI();
-    });
-  }
-
-  // Check URL query parameters (?mode=register or ?role=admin)
+  // Check URL query parameters (?mode=register)
   const params = new URLSearchParams(window.location.search);
   const urlMode = (params.get('mode') || '').toLowerCase();
-  const urlRole = (params.get('role') || '').toLowerCase();
-  if (urlRole === 'admin') {
-    setRole('Admin');
-  } else if (urlMode === 'register') {
+  if (urlMode === 'register') {
     setMode('register');
   } else {
     updateAuthUI();
@@ -262,8 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
       hideError();
       const email = emailInput ? emailInput.value.trim() : '';
       const password = passwordInput ? passwordInput.value : '';
-      const role = roleInput ? roleInput.value : 'Customer';
-      const isRegister = role !== 'Admin' && currentMode === 'register';
+      const isRegister = currentMode === 'register';
       const fullName = nameInput ? nameInput.value.trim() : '';
       const phoneNumber = phoneInput ? phoneInput.value.trim() : '';
       const address = addressInput ? addressInput.value.trim() : '';
@@ -310,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       event.preventDefault();
 
-      const targetRoleParam = role === 'Admin' ? 'admin' : 'client';
+      let targetRoleParam = 'client';
 
       try {
         if (isRegister) {
@@ -331,6 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showError(regData?.error || 'Could not register account. That email may already be registered.');
             return;
           }
+          targetRoleParam = 'client';
         } else {
           const loginRes = await fetch(API_ENDPOINT, {
             method: 'POST',
@@ -339,17 +254,20 @@ document.addEventListener('DOMContentLoaded', () => {
               action: 'login_user',
               email,
               password,
-              role,
             }),
           });
           const loginData = await loginRes.json().catch(() => null);
           if (!loginRes.ok || !loginData || loginData.ok === false) {
             showError(
               loginData?.error ||
-                'Invalid email or password. No matching account record was found in the database.'
+                'Invalid email address or password. Please verify your credentials and try again.'
             );
             return;
           }
+          const detectedRoleRaw = String(
+            loginData.sessionUser?.role || loginData.user?.role || 'Customer'
+          ).toLowerCase();
+          targetRoleParam = detectedRoleRaw === 'admin' ? 'admin' : 'client';
         }
       } catch (_e) {
         showError('Unable to reach authentication server. Please try again.');

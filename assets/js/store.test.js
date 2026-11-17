@@ -1086,7 +1086,42 @@ describe('Pure JavaScript & Server Store Logic Tests', () => {
     assert.equal(dbPhpContent.includes('INSERT INTO Customization (CustomizationID, OrderItemID, MaterialID'), false);
     assert.equal(dbPhpContent.includes('INSERT INTO Production_Task (TaskID, OrderItemID, TaskStatus, StartDate, EndDate)'), false);
   });
+
+  it('enforces unified login without preset credentials, automatic database role detection, direct URL protection, and strict DSA preservation', () => {
+    const loginHtml = fs.readFileSync(path.join(process.cwd(), 'login.html'), 'utf8');
+    const loginPhp = fs.readFileSync(path.join(process.cwd(), 'src', 'views', 'login.php'), 'utf8');
+    const loginJs = fs.readFileSync(path.join(process.cwd(), 'assets', 'js', 'login.js'), 'utf8');
+    const userPhp = fs.readFileSync(path.join(process.cwd(), 'src', 'App', 'Models', 'User.php'), 'utf8');
+    const homeCtrlPhp = fs.readFileSync(path.join(process.cwd(), 'src', 'App', 'Controllers', 'HomeControllers.php'), 'utf8');
+    const dashboardJs = fs.readFileSync(path.join(process.cwd(), 'assets', 'js', 'dashboard.js'), 'utf8');
+
+    // 1. No preset demo credentials box, auto-fill button, or role switcher on login pages
+    for (const content of [loginHtml, loginPhp, loginJs]) {
+      assert.equal(content.includes('demo-credentials-box'), false);
+      assert.equal(content.includes('fill-demo-credentials'), false);
+      assert.equal(content.includes('Quick Demo Credentials'), false);
+      assert.equal(content.includes('data-role-tab'), false);
+      assert.equal(content.includes('ClientPass2025!'), false);
+      assert.equal(content.includes('MasterJoinery#01'), false);
+    }
+
+    // 2. Unified login page retains Sign In and Create Account toggle tabs
+    assert.ok(loginHtml.includes('id="auth-mode-signin"'));
+    assert.ok(loginHtml.includes('id="auth-mode-register"'));
+    assert.ok(loginPhp.includes('id="auth-mode-signin"'));
+    assert.ok(loginPhp.includes('id="auth-mode-register"'));
+
+    // 3. Automatic role detection in HomeControllers.php and User.php + DSA comments preserved
+    assert.ok(homeCtrlPhp.includes('authenticate($email, $password, null)'));
+    assert.ok(userPhp.includes('// ALGORITHM B2: Linear search'));
+    assert.ok(userPhp.includes('// ALGORITHM B5: Hash function'));
+
+    // 4. Direct URL protection in dashboard.js and HomeControllers.php
+    assert.ok(dashboardJs.includes("if (urlRole === 'admin' && !isAdmin)"));
+    assert.ok(homeCtrlPhp.includes("if ($requestedRole === 'admin' && $actualRole !== 'admin')"));
+  });
 });
+
 
 
 

@@ -82,25 +82,7 @@
               Access your orders, saved delivery address, and personal vouchers, or create a new customer account.
             </p>
 
-            <!-- Role Switcher (Customer vs Admin) -->
-            <div class="role-switcher">
-              <button
-                type="button"
-                class="role-btn active"
-                data-role-tab="Customer"
-              >
-                Customer Account
-              </button>
-              <button
-                type="button"
-                class="role-btn"
-                data-role-tab="Admin"
-              >
-                Admin Console
-              </button>
-            </div>
-
-            <!-- Customer Auth Mode Toggle: Sign In vs Create Account (Hidden when Admin role is selected) -->
+            <!-- Auth Mode Toggle: Sign In vs Create Account -->
             <div
               id="customer-auth-mode-tabs"
               style="display: flex; gap: 0.5rem; margin-bottom: 1.1rem; background: #F8FAFC; padding: 0.3rem; border-radius: 0.75rem; border: 1px solid #E2E8F0;"
@@ -123,28 +105,6 @@
               </button>
             </div>
 
-            <!-- Demo Credentials Helper -->
-            <div
-              id="demo-credentials-box"
-              style="background: rgba(224, 242, 254, 0.75); border: 1px solid #BAE6FD; border-radius: 0.75rem; padding: 0.75rem 1rem; margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;"
-            >
-              <div>
-                <div class="lr-mono" style="font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; color: #0284C7;">
-                  Quick Demo Credentials
-                </div>
-                <div id="demo-email-preview" class="lr-mono" style="font-size: 0.78rem; color: #0F172A; margin-top: 0.15rem;">
-                  rowena.vance@vancearchitects.com
-                </div>
-              </div>
-              <button
-                type="button"
-                id="fill-demo-credentials"
-                style="background: #FFFFFF; border: 1px solid #7DD3FC; color: #0095FF; border-radius: 0.5rem; padding: 0.4rem 0.75rem; font-size: 0.75rem; font-weight: 700; cursor: pointer;"
-              >
-                Auto-Fill
-              </button>
-            </div>
-
             <!-- Error Banner -->
             <div
               id="login-error-banner"
@@ -152,9 +112,8 @@
               style="display: none;"
             ></div>
 
-            <!-- Login / Registration Form -->
+            <!-- Unified Login / Registration Form -->
             <form id="lr-login-form" method="post" action="dashboard.html" novalidate>
-              <input type="hidden" id="login-role" name="role" value="Customer" />
               <input type="hidden" id="login-mode" name="mode" value="signin" />
 
               <div id="register-name-group" class="form-group" style="display: none;">
@@ -175,7 +134,7 @@
                   name="email"
                   type="email"
                   class="form-input"
-                  value="rowena.vance@vancearchitects.com"
+                  value=""
                   placeholder="you@example.com"
                   required
                 />
@@ -188,7 +147,7 @@
                   name="password"
                   type="password"
                   class="form-input"
-                  value="ClientPass2025!"
+                  value=""
                   placeholder="At least 6 characters"
                   required
                 />

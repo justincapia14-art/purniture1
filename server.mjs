@@ -344,45 +344,132 @@ function handleApiRequest(req, res, parsedUrl) {
             case 'login_user': {
               const email = String(payload.email || '').trim().toLowerCase();
               const password = String(payload.password || '');
-              const roleParam = String(payload.role || 'Customer').trim();
-              const isAdminRole = roleParam.toLowerCase() === 'admin';
 
-              if (isAdminRole) {
-                if (email !== 'admin@lilliarowena.com') {
-                  return sendJson(res, 401, {
-                    ok: false,
-                    error: 'No Admin account found with that email address.',
-                  });
-                }
-                if (password !== 'MasterJoinery#01') {
-                  return sendJson(res, 401, {
-                    ok: false,
-                    error: `Incorrect password for ${email}.`,
-                  });
-                }
-                const sessionUser = {
-                  email: 'admin@lilliarowena.com',
-                  name: 'Lillia Mercier (Business Owner)',
-                  role: 'admin',
-                };
-                store.sessionUser = sessionUser;
-                writeStoreFile(store);
-                return sendJson(res, 200, { ok: true, sessionUser });
-              }
-
-              const customers = Array.isArray(store.customers) ? store.customers : [];
-              const matchedCustomer = customers.find(
-                (c) => String(c.email || '').trim().toLowerCase() === email
-              );
-
-              if (!matchedCustomer) {
-                return sendJson(res, 401, {
+              if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                return sendJson(res, 422, {
                   ok: false,
-                  error: 'No account found with that email address. Please register an account first.',
+                  error: 'Please enter a valid email address.',
+                });
+              }
+              if (!password || password.length < 6) {
+                return sendJson(res, 422, {
+                  ok: false,
+                  error: 'Password must be at least 6 characters.',
                 });
               }
 
-              const expectedPass = matchedCustomer.passwordPlain || 'ClientPass2025!';
+              const seededAccounts = [
+                {
+                  id: 'ADM-LR-901',
+                  adminId: 'ADM-LR-901',
+                  role: 'Admin',
+                  fullName: 'Lillia Mercier (Business Owner)',
+                  email: 'admin@lilliarowena.com',
+                  passwordPlain: 'MasterJoinery#01',
+                  phoneNumber: '+1 (212) 555-0100',
+                  address: 'Lillia and Rowena Furniture Showroom, New York',
+                },
+                {
+                  id: 'LR-CUS-301',
+                  customerId: 'LR-CUS-301',
+                  role: 'Customer',
+                  fullName: 'Rowena Vance',
+                  email: 'rowena.vance@vancearchitects.com',
+                  passwordPlain: 'ClientPass2025!',
+                  phoneNumber: '+1 (212) 555-0148',
+                  address: 'Suite 400, 118 Mercer St, SoHo, New York, NY 10013',
+                },
+                {
+                  id: 'LR-CUS-302',
+                  customerId: 'LR-CUS-302',
+                  role: 'Customer',
+                  fullName: 'Julian Mercier',
+                  email: 'j.mercier@mercierstudio.co',
+                  passwordPlain: 'ClientPass2025!',
+                  phoneNumber: '+1 (212) 555-0164',
+                  address: '45 Crosby St, Loft 3B, New York, NY 10012',
+                },
+                {
+                  id: 'LR-CUS-304',
+                  customerId: 'LR-CUS-304',
+                  role: 'Customer',
+                  fullName: 'Elena Rostova',
+                  email: 'elena@rostovainteriors.com',
+                  passwordPlain: 'ClientPass2025!',
+                  phoneNumber: '+1 (212) 555-0182',
+                  address: '720 Park Ave, Apt 9A, New York, NY 10021',
+                },
+                {
+                  id: 'LR-CUS-308',
+                  customerId: 'LR-CUS-308',
+                  role: 'Customer',
+                  fullName: 'Marcus Sterling',
+                  email: 'm.sterling@sterlingcapital.io',
+                  passwordPlain: 'ClientPass2025!',
+                  phoneNumber: '+1 (212) 555-0199',
+                  address: '15 Central Park West, New York, NY 10023',
+                },
+                {
+                  id: 'LR-CUS-315',
+                  customerId: 'LR-CUS-315',
+                  role: 'Customer',
+                  fullName: 'Clara Vance',
+                  email: 'clara.vance@architects.io',
+                  passwordPlain: 'ClientPass2025!',
+                  phoneNumber: '+1 (212) 555-0148',
+                  address: '412 Mercer St, Penthouse B, New York, NY 10013',
+                },
+                {
+                  id: 'LR-CUS-319',
+                  customerId: 'LR-CUS-319',
+                  role: 'Customer',
+                  fullName: 'Julian Thorne',
+                  email: 'j.thorne@studio-thorne.com',
+                  passwordPlain: 'ClientPass2025!',
+                  phoneNumber: '+1 (415) 555-0193',
+                  address: '88 Pacific Ave, San Francisco, CA 94111',
+                },
+              ];
+
+              const storeCustomers = Array.isArray(store.customers) ? store.customers : [];
+              const mergedAccounts = [...seededAccounts];
+              for (const cust of storeCustomers) {
+                const custEmail = String(cust.email || '').trim().toLowerCase();
+                if (!custEmail) continue;
+                const existingIdx = mergedAccounts.findIndex(
+                  (acc) => String(acc.email || '').trim().toLowerCase() === custEmail
+                );
+                if (existingIdx >= 0) {
+                  mergedAccounts[existingIdx] = {
+                    ...mergedAccounts[existingIdx],
+                    ...cust,
+                    role: cust.role || mergedAccounts[existingIdx].role || 'Customer',
+                    passwordPlain: cust.passwordPlain || mergedAccounts[existingIdx].passwordPlain,
+                  };
+                } else {
+                  mergedAccounts.push({
+                    ...cust,
+                    role: cust.role || 'Customer',
+                  });
+                }
+              }
+
+              const matchedAccount = mergedAccounts.find(
+                (acc) => String(acc.email || '').trim().toLowerCase() === email
+              );
+
+              if (!matchedAccount) {
+                return sendJson(res, 401, {
+                  ok: false,
+                  error: 'No account found with that email address.',
+                });
+              }
+
+              const isAccountAdmin = String(matchedAccount.role || '').toLowerCase() === 'admin';
+              const expectedPass =
+                matchedAccount.passwordPlain ||
+                (isAccountAdmin ? 'MasterJoinery#01' : 'ClientPass2025!');
+
               if (password !== expectedPass) {
                 return sendJson(res, 401, {
                   ok: false,
@@ -390,11 +477,26 @@ function handleApiRequest(req, res, parsedUrl) {
                 });
               }
 
-              const fullName = matchedCustomer.fullName || matchedCustomer.name || email;
-              const avatarUrl = matchedCustomer.avatar || '';
+              const sanitizedUser = { ...matchedAccount };
+              delete sanitizedUser.passwordPlain;
+              delete sanitizedUser.passwordHash;
+
+              if (isAccountAdmin) {
+                const sessionUser = {
+                  email: matchedAccount.email,
+                  name: matchedAccount.fullName || 'Lillia Mercier (Business Owner)',
+                  role: 'admin',
+                };
+                store.sessionUser = sessionUser;
+                writeStoreFile(store);
+                return sendJson(res, 200, { ok: true, user: sanitizedUser, sessionUser });
+              }
+
+              const fullName = matchedAccount.fullName || matchedAccount.name || email;
+              const avatarUrl = matchedAccount.avatar || '';
               const isDemoRowena = email === 'rowena.vance@vancearchitects.com';
               const sessionUser = {
-                email: matchedCustomer.email,
+                email: matchedAccount.email,
                 name: fullName,
                 role: 'client',
                 avatar: avatarUrl,
@@ -402,15 +504,20 @@ function handleApiRequest(req, res, parsedUrl) {
               store.sessionUser = sessionUser;
               store.customerProfile = {
                 name: fullName,
-                email: matchedCustomer.email,
-                phone: matchedCustomer.phoneNumber || matchedCustomer.phone || '',
-                city: matchedCustomer.city ?? (isDemoRowena ? 'New York, NY 10013' : ''),
-                address: matchedCustomer.address || '',
-                notes: matchedCustomer.notes ?? (isDemoRowena ? 'Freight elevator available Mon–Fri 9:00 AM – 5:00 PM. Please call 30 minutes before arrival.' : ''),
+                email: matchedAccount.email,
+                phone: matchedAccount.phoneNumber || matchedAccount.phone || '',
+                city: matchedAccount.city ?? (isDemoRowena ? 'New York, NY 10013' : ''),
+                address: matchedAccount.address || '',
+                notes: matchedAccount.notes ?? (isDemoRowena ? 'Freight elevator available Mon–Fri 9:00 AM – 5:00 PM. Please call 30 minutes before arrival.' : ''),
                 avatar: avatarUrl,
               };
               writeStoreFile(store);
-              return sendJson(res, 200, { ok: true, customer: matchedCustomer, sessionUser });
+              return sendJson(res, 200, {
+                ok: true,
+                user: sanitizedUser,
+                customer: sanitizedUser,
+                sessionUser,
+              });
             }
 
             case 'register_customer': {
@@ -520,6 +627,27 @@ const server = http.createServer((req, res) => {
 
   if (pathname === '/api.php' || pathname === '/src/api.php' || pathname === '/api/store') {
     return handleApiRequest(req, res, parsedUrl);
+  }
+
+  if (pathname === '/dashboard.html' || pathname === '/src/home.php' || pathname === '/src/views/home.php') {
+    const activeSession = serverStoreState?.sessionUser;
+    if (!activeSession || !activeSession.email || !activeSession.role) {
+      res.writeHead(302, { Location: '/login.html' });
+      res.end();
+      return;
+    }
+    const verifiedRole = String(activeSession.role).toLowerCase() === 'admin' ? 'admin' : 'client';
+    const requestedRole = (parsedUrl.searchParams.get('role') || '').toLowerCase();
+    if (requestedRole === 'admin' && verifiedRole !== 'admin') {
+      res.writeHead(302, { Location: '/dashboard.html?role=client' });
+      res.end();
+      return;
+    }
+    if (requestedRole === 'client' && verifiedRole === 'admin') {
+      res.writeHead(302, { Location: '/dashboard.html?role=admin' });
+      res.end();
+      return;
+    }
   }
 
   if (pathname === '/') {

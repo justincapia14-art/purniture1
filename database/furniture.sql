@@ -268,7 +268,7 @@ CREATE TABLE `Production_Task` (
 
 -- 1. Admin
 INSERT INTO `Admin` (`AdminID`, `Email`, `PasswordHash`) VALUES
-('ADM-LR-901', 'admin@lilliarowena.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi');
+('ADM-LR-901', 'admin@lilliarowena.com', '$2y$10$abcdefghijklmnopqrstuuJRg8y9EE7NfJg/4gvxVqe0MzrBMkTy2');
 
 -- 2. Category (5 Showroom Categories)
 INSERT INTO `Category` (`CategoryID`, `CategoryName`, `Description`) VALUES
@@ -280,10 +280,10 @@ INSERT INTO `Category` (`CategoryID`, `CategoryName`, `Description`) VALUES
 
 -- 3. Customer
 INSERT INTO `Customer` (`CustomerID`, `FullName`, `Email`, `PasswordHash`, `PhoneNumber`, `Address`) VALUES
-('LR-CUS-301', 'Rowena Vance', 'rowena.vance@vancearchitects.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '+1 (212) 555-0148', 'Suite 400, 118 Mercer St, SoHo, New York, NY 10013'),
-('LR-CUS-302', 'Julian Mercier', 'j.mercier@mercierstudio.co', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '+1 (415) 555-0192', '742 Evergreen Terrace, Pacific Heights, SF'),
-('LR-CUS-304', 'Elena Rostova', 'elena@rostovainteriors.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '+44 20 7946 0821', '29A Kensington Park Rd, Notting Hill'),
-('LR-CUS-308', 'Marcus Sterling', 'm.sterling@sterlingcapital.io', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '+1 (312) 555-0164', '880 Lake Shore Drive, Apt 32B, Chicago');
+('LR-CUS-301', 'Rowena Vance', 'rowena.vance@vancearchitects.com', '$2y$10$abcdefghijklmnopqrstuur0t/7DuR7B.u/o560.Wa/80O.KsaL1e', '+1 (212) 555-0148', 'Suite 400, 118 Mercer St, SoHo, New York, NY 10013'),
+('LR-CUS-302', 'Julian Mercier', 'j.mercier@mercierstudio.co', '$2y$10$abcdefghijklmnopqrstuur0t/7DuR7B.u/o560.Wa/80O.KsaL1e', '+1 (415) 555-0192', '742 Evergreen Terrace, Pacific Heights, SF'),
+('LR-CUS-304', 'Elena Rostova', 'elena@rostovainteriors.com', '$2y$10$abcdefghijklmnopqrstuur0t/7DuR7B.u/o560.Wa/80O.KsaL1e', '+44 20 7946 0821', '29A Kensington Park Rd, Notting Hill'),
+('LR-CUS-308', 'Marcus Sterling', 'm.sterling@sterlingcapital.io', '$2y$10$abcdefghijklmnopqrstuur0t/7DuR7B.u/o560.Wa/80O.KsaL1e', '+1 (312) 555-0164', '880 Lake Shore Drive, Apt 32B, Chicago');
 
 -- 4. Product (11 Showroom Pieces — Explicit Product Code IDs like LR-LV-014)
 INSERT INTO `Product` (`ProductID`, `CategoryID`, `ProductName`, `BasePrice`) VALUES

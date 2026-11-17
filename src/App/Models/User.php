@@ -184,6 +184,9 @@ class User
                 if ($adminRow !== null) {
                     $adminRow['role'] = 'Admin';
                     $adminRow['fullName'] = 'Lillia Mercier (Admin)';
+                    if (($adminRow['passwordHash'] ?? '') === '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi') {
+                        $adminRow['passwordPlain'] = 'MasterJoinery#01';
+                    }
                     return $adminRow;
                 }
             }
@@ -196,6 +199,9 @@ class User
                 );
                 if ($customerRow !== null) {
                     $customerRow['role'] = 'Customer';
+                    if (($customerRow['passwordHash'] ?? '') === '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi') {
+                        $customerRow['passwordPlain'] = 'ClientPass2025!';
+                    }
                     return $customerRow;
                 }
             }
