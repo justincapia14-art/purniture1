@@ -1,9 +1,22 @@
-import { computeMonthlyAnalyticsReport, resolveAnalyticsDateRange, buildAnalyticsCsvContent, buildAnalyticsPdfBytes, computePercentageChange } from './analytics.js';
+import {
+  computeMonthlyAnalyticsReport,
+  resolveAnalyticsDateRange,
+  buildAnalyticsCsvContent,
+  buildAnalyticsPdfBytes,
+  computePercentageChange,
+  mergeSortRecords,
+  insertionSortLowPerforming,
+} from './analytics.js';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
+  OrderQueue,
+  HashTable,
+  computeHashBucketIndex,
+  insertionSortProductsById,
+  findProductByIdBinarySearch,
   PRODUCT_TYPES,
   applyAdminOrderUpdate,
   applyMaterialStockMovement,
@@ -937,6 +950,79 @@ describe('Pure JavaScript & Server Store Logic Tests', () => {
     const pdfHeader = new TextDecoder().decode(pdfBytes.slice(0, 8));
     assert.equal(pdfHeader, '%PDF-1.4');
   });
+
+  it('verifies explicit Data Structure A1 (Queue) and Algorithms B1–B5 (Binary Search, Linear Search, Merge Sort, Insertion Sort, Hash Function) on showroom data', () => {
+    // A1: Queue (OrderQueue FIFO order processing)
+    const orderQueue = new OrderQueue();
+    assert.equal(orderQueue.isEmpty(), true);
+    orderQueue.enqueue({ orderNumber: 'ORD-2026-8841', status: 'Pending' });
+    orderQueue.enqueue({ orderNumber: 'ORD-2026-8854', status: 'Delivered · Completed' });
+    assert.equal(orderQueue.size(), 2);
+    assert.equal(orderQueue.peek().orderNumber, 'ORD-2026-8841');
+    assert.equal(orderQueue.dequeue().orderNumber, 'ORD-2026-8841');
+    assert.equal(orderQueue.dequeue().orderNumber, 'ORD-2026-8854');
+    assert.equal(orderQueue.isEmpty(), true);
+
+    // B4: Insertion sort on catalog products by ID & low-performing products
+    const reversedCatalog = [...INITIAL_FURNITURE_ITEMS].reverse();
+    const sortedByInsertion = insertionSortProductsById(reversedCatalog);
+    assert.equal(sortedByInsertion.length, INITIAL_FURNITURE_ITEMS.length);
+    for (let i = 1; i < sortedByInsertion.length; i += 1) {
+      const prevId = String(sortedByInsertion[i - 1].id).toUpperCase();
+      const currId = String(sortedByInsertion[i].id).toUpperCase();
+      assert.ok(prevId.localeCompare(currId) <= 0);
+    }
+
+    const lowPerfSorted = insertionSortLowPerforming([
+      { name: 'Piece C', quantitySold: 1, totalRevenue: 3200 },
+      { name: 'Piece A', quantitySold: 0, totalRevenue: 0 },
+      { name: 'Piece B', quantitySold: 1, totalRevenue: 1800 },
+    ]);
+    assert.deepEqual(
+      lowPerfSorted.map((p) => p.name),
+      ['Piece A', 'Piece B', 'Piece C']
+    );
+
+    // B1: Binary search on sorted catalog products
+    const foundSofa = findProductByIdBinarySearch(sortedByInsertion, 'furn-lv-01');
+    assert.ok(foundSofa);
+    assert.equal(foundSofa.sku, 'LR-LV-014');
+    assert.equal(findProductByIdBinarySearch(sortedByInsertion, 'furn-nonexistent-99'), null);
+
+    // B2: Linear search on unsorted catalog items across multi-attribute text
+    const boucléMatches = filterFurnitureItems(INITIAL_FURNITURE_ITEMS, 'bouclé', 'all');
+    assert.ok(boucléMatches.length >= 1);
+    assert.ok(boucléMatches.some((item) => item.id === 'furn-lv-01'));
+
+    // B3: Merge sort on analytics revenue rankings
+    const unsortedRankings = [
+      { id: 'furn-bd-01', totalRevenue: 3100, quantitySold: 1, name: 'Bed' },
+      { id: 'furn-lv-01', totalRevenue: 8730, quantitySold: 2, name: 'Sofa' },
+      { id: 'furn-dn-01', totalRevenue: 3696, quantitySold: 1, name: 'Dining Table' },
+    ];
+    const rankedByMergeSort = mergeSortRecords(
+      unsortedRankings,
+      (a, b) => b.totalRevenue - a.totalRevenue || b.quantitySold - a.quantitySold
+    );
+    assert.deepEqual(
+      rankedByMergeSort.map((r) => r.id),
+      ['furn-lv-01', 'furn-dn-01', 'furn-bd-01']
+    );
+
+    // B5: Hash function & Separate Chaining HashTable
+    const bucketIdxA = computeHashBucketIndex('VCH-ROWENA-SOFA400', 53);
+    const bucketIdxB = computeHashBucketIndex('vch-rowena-sofa400', 53);
+    assert.equal(bucketIdxA, bucketIdxB);
+    assert.ok(bucketIdxA >= 0 && bucketIdxA < 53);
+
+    const voucherTable = new HashTable(53);
+    INITIAL_VOUCHERS.forEach((v) => voucherTable.put(v.code, v));
+    const lookedUpVoucher = voucherTable.get('VCH-ROWENA-SOFA400');
+    assert.ok(lookedUpVoucher);
+    assert.equal(lookedUpVoucher.discountAmount, 400);
+    assert.equal(voucherTable.get('NON-EXISTENT-CODE'), null);
+  });
 });
+
 
 

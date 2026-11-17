@@ -6,6 +6,7 @@ namespace App\Models;
 
 use Library\Database;
 use Library\Exceptions\ValidationException;
+use Library\HashTable;
 
 /**
  * Product & Voucher Domain Model mapped to `Product`, `Category`, `Voucher`, `Order_Item`,
@@ -18,6 +19,140 @@ class Product
     public function __construct(?Database $db = null)
     {
         $this->db = $db ?? Database::getInstance();
+    }
+
+    /**
+     * // ALGORITHM B4: Insertion sort
+     * // Chapter: Chapter 5 (Searching and Basic Sorting)
+     * // Purpose: Sorts catalog product records in-place in ascending order by Product ID (`id`)
+     * //          so Binary Search (B1) can locate any product in O(log n) time.
+     * // Time Complexity: O(n) best case (when catalog is already/nearly sorted), O(n^2) average and worst case
+     * // Space Complexity: O(1) auxiliary space (in-place swaps on the array)
+     *
+     * @param array<int, array<string, mixed>> $products
+     * @return array<int, array<string, mixed>>
+     */
+    public function insertionSortProductsById(array $products): array
+    {
+        $sorted = array_values($products);
+        $n = count($sorted);
+
+        for ($i = 1; $i < $n; $i++) {
+            $currentProduct = $sorted[$i];
+            $currentKey = strtolower(trim((string) ($currentProduct['id'] ?? '')));
+            $j = $i - 1;
+
+            while ($j >= 0 && strcmp(strtolower(trim((string) ($sorted[$j]['id'] ?? ''))), $currentKey) > 0) {
+                $sorted[$j + 1] = $sorted[$j];
+                $j--;
+            }
+            $sorted[$j + 1] = $currentProduct;
+        }
+
+        return $sorted;
+    }
+
+    /**
+     * // ALGORITHM B1: Binary search
+     * // Chapter: Chapter 5 (Searching and Basic Sorting)
+     * // Purpose: Finds a product record by its Product ID (`id`) in a sorted product list
+     * //          by halving the search interval at every check during voucher creation,
+     * //          voucher validation, and shopping cart checkout pricing.
+     * // Time Complexity: O(log n) worst and average case, O(1) best case
+     * // Space Complexity: O(1) auxiliary space (iterative two-pointer implementation)
+     *
+     * @param array<int, array<string, mixed>> $sortedProducts
+     * @return array<string, mixed>|null
+     */
+    public function findProductByIdBinarySearch(array $sortedProducts, string $targetId): ?array
+    {
+        $targetKey = strtolower(trim($targetId));
+        if ($targetKey === '') {
+            return null;
+        }
+
+        $low = 0;
+        $high = count($sortedProducts) - 1;
+
+        while ($low <= $high) {
+            $mid = intdiv($low + $high, 2);
+            $midProduct = $sortedProducts[$mid];
+            $midKey = strtolower(trim((string) ($midProduct['id'] ?? '')));
+
+            $comparison = strcmp($midKey, $targetKey);
+            if ($comparison === 0) {
+                return $midProduct;
+            }
+            if ($comparison < 0) {
+                $low = $mid + 1;
+            } else {
+                $high = $mid - 1;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * // ALGORITHM B2: Linear search
+     * // Chapter: Chapter 5 (Searching and Basic Sorting)
+     * // Purpose: Checks unsorted catalog furniture items one by one across multiple text fields
+     * //          (name, SKU, category, description, finishes, color variants) to filter products
+     * //          matching a customer's keyword search and room category filter.
+     * // Time Complexity: O(n) worst and average case, O(1) best case
+     * // Space Complexity: O(1) auxiliary space beyond the matched result list
+     *
+     * @param array<int, array<string, mixed>> $products
+     * @return array<int, array<string, mixed>>
+     */
+    public function searchCatalogLinear(
+        array $products,
+        string $searchQuery = '',
+        string $categoryId = 'all'
+    ): array {
+        $normalizedQuery = strtolower(trim($searchQuery));
+        $normalizedCategory = strtolower(trim($categoryId !== '' ? $categoryId : 'all'));
+        $matched = [];
+        $count = count($products);
+
+        for ($i = 0; $i < $count; $i++) {
+            $item = $products[$i];
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $itemCategory = strtolower(trim((string) ($item['categoryId'] ?? '')));
+            if ($normalizedCategory !== 'all' && $itemCategory !== $normalizedCategory) {
+                continue;
+            }
+
+            if ($normalizedQuery === '') {
+                $matched[] = $item;
+                continue;
+            }
+
+            $finishesText = isset($item['finishes']) && is_array($item['finishes'])
+                ? implode(' ', $item['finishes'])
+                : '';
+            $searchableText = strtolower(implode(' ', [
+                (string) ($item['name'] ?? ''),
+                (string) ($item['sku'] ?? ''),
+                (string) ($item['categoryName'] ?? ''),
+                (string) ($item['description'] ?? ''),
+                (string) ($item['craftsmanshipNote'] ?? ''),
+                (string) ($item['defaultFinish'] ?? ''),
+                (string) ($item['origin'] ?? ''),
+                (string) ($item['productType'] ?? ''),
+                (string) ($item['customizationNotes'] ?? ''),
+                $finishesText,
+            ]));
+
+            if (str_contains($searchableText, $normalizedQuery)) {
+                $matched[] = $item;
+            }
+        }
+
+        return $matched;
     }
 
     /**
@@ -213,13 +348,9 @@ class Product
         }
 
         $furnitureId = trim((string) ($input['furnitureId'] ?? $input['productId'] ?? ''));
-        $matchedProduct = null;
-        foreach ($products as $prod) {
-            if ((string) ($prod['id'] ?? '') === $furnitureId) {
-                $matchedProduct = $prod;
-                break;
-            }
-        }
+        // Sort catalog by ID via Insertion Sort (B4) and locate the target product via Binary Search (B1)
+        $sortedProducts = $this->insertionSortProductsById($products);
+        $matchedProduct = $this->findProductByIdBinarySearch($sortedProducts, $furnitureId);
 
         if ($furnitureId === '' || $matchedProduct === null) {
             throw new ValidationException('Select a valid eligible product from the catalog.');
@@ -230,10 +361,16 @@ class Product
             throw new ValidationException('Enter or generate a valid voucher code (at least 3 characters).');
         }
 
+        // Index existing voucher codes using Hash Function (B5) for O(1) duplicate code check
+        $voucherHashTable = new HashTable(53);
         foreach ($vouchers as $existing) {
-            if (strtoupper(trim((string) ($existing['code'] ?? ''))) === $code) {
-                throw new ValidationException('Voucher code "' . $code . '" already exists. Please generate or enter a unique code.');
+            $existingCode = strtoupper(trim((string) ($existing['code'] ?? '')));
+            if ($existingCode !== '') {
+                $voucherHashTable->put($existingCode, $existing);
             }
+        }
+        if ($voucherHashTable->has($code)) {
+            throw new ValidationException('Voucher code "' . $code . '" already exists. Please generate or enter a unique code.');
         }
 
         $discountAmount = round((float) ($input['discountAmount'] ?? $input['discountValue'] ?? 0), 2);
@@ -300,7 +437,8 @@ class Product
         $defaultName = ucwords(str_replace(['.', '_', '-'], ' ', $emailPrefix));
         $customerName = trim((string) ($input['customerName'] ?? '')) ?: $defaultName;
         $issuedByAdmin = trim((string) ($input['issuedByAdmin'] ?? '')) ?: 'Lillia Mercier';
-        $voucherId = strtoupper(trim((string) ($input['voucherId'] ?? ('VCH-LR-' . (100 + (abs((int) crc32($code)) % 899))))));
+        $idHashTable = new HashTable(899);
+        $voucherId = strtoupper(trim((string) ($input['voucherId'] ?? ('VCH-LR-' . (100 + $idHashTable->hashKey($code))))));
 
         $voucher = [
             'id'               => (string) ($input['id'] ?? ('vch-' . (int) round(microtime(true) * 1000))),
@@ -334,7 +472,7 @@ class Product
     }
 
     /**
-     * Revoke an issued voucher by ID or Code.
+     * Revoke an issued voucher by ID or Code using Linear Search (B2) over unsorted voucher records.
      *
      * @return array<string, mixed>
      * @throws ValidationException
@@ -352,7 +490,10 @@ class Product
         $revokedAt = (new \DateTimeImmutable('now', $manilaTz))->format(\DateTimeInterface::ATOM);
 
         $revokedVoucher = null;
-        foreach ($vouchers as &$v) {
+        $voucherCount = count($vouchers);
+        // ALGORITHM B2: Linear search across unsorted voucher list by ID or Code
+        for ($i = 0; $i < $voucherCount; $i++) {
+            $v = $vouchers[$i];
             $matchesId = (string) ($v['id'] ?? '') === $cleanId;
             $matchesCode = strcasecmp((string) ($v['code'] ?? ''), $cleanId) === 0;
             if (!$matchesId && !$matchesCode) {
@@ -361,12 +502,11 @@ class Product
             if (($v['status'] ?? '') === 'Used') {
                 throw new ValidationException('Cannot revoke a voucher that has already been redeemed.');
             }
-            $v['status'] = 'Revoked';
-            $v['revokedAt'] = $revokedAt;
-            $revokedVoucher = $v;
+            $vouchers[$i]['status'] = 'Revoked';
+            $vouchers[$i]['revokedAt'] = $revokedAt;
+            $revokedVoucher = $vouchers[$i];
             break;
         }
-        unset($v);
 
         if ($revokedVoucher === null) {
             throw new ValidationException('Voucher not found.');
@@ -401,59 +541,65 @@ class Product
         $vouchers = isset($store['vouchers']) && is_array($store['vouchers']) ? $store['vouchers'] : [];
         $products = isset($store['products']) && is_array($store['products']) ? $store['products'] : [];
 
-        foreach ($vouchers as $voucher) {
-            if (strtoupper((string) ($voucher['code'] ?? '')) !== $normalizedCode) {
-                continue;
+        // ALGORITHM B5: Hash function lookup of voucher by normalized code in O(1) average time
+        $voucherHashTable = new HashTable(53);
+        foreach ($vouchers as $v) {
+            $vCode = strtoupper(trim((string) ($v['code'] ?? '')));
+            if ($vCode !== '') {
+                $voucherHashTable->put($vCode, $v);
             }
-
-            $voucherEmail = strtolower(trim((string) ($voucher['customerEmail'] ?? '')));
-            if ($voucherEmail !== '' && $voucherEmail !== 'all' && $voucherEmail !== '*') {
-                if ($normalizedEmail === '' || $voucherEmail !== $normalizedEmail) {
-                    throw new ValidationException(
-                        'SQLSTATE[45000]: Voucher does not belong to the customer of this order (' . $voucher['customerEmail'] . ' only).'
-                    );
-                }
-            }
-
-            $targetProductId = (string) ($voucher['furnitureId'] ?? $voucher['productId'] ?? '');
-            if ($targetProductId !== $productId) {
-                $targetName = (string) ($voucher['furnitureName'] ?? $voucher['productName'] ?? $targetProductId);
-                throw new ValidationException(
-                    'This voucher is only valid for the selected product (' . $targetName . ').'
-                );
-            }
-
-            $effectiveStatus = $this->resolveVoucherStatus($voucher);
-            if ($effectiveStatus === 'Expired') {
-                throw new ValidationException('SQLSTATE[45000]: Voucher "' . $normalizedCode . '" has expired.');
-            }
-            if ($effectiveStatus === 'Revoked') {
-                throw new ValidationException('SQLSTATE[45000]: Voucher "' . $normalizedCode . '" has been revoked.');
-            }
-            if ($effectiveStatus !== 'Active' && $effectiveStatus !== 'Expiring Soon') {
-                throw new ValidationException('SQLSTATE[45000]: Voucher is not active (Status: ' . $effectiveStatus . ').');
-            }
-
-            $discountAmount = (float) ($voucher['discountAmount'] ?? $voucher['discountValue'] ?? 0);
-            if ($discountAmount <= 0) {
-                throw new ValidationException('Voucher discount amount must be greater than $0.');
-            }
-
-            foreach ($products as $prod) {
-                if ((string) ($prod['id'] ?? '') === $targetProductId) {
-                    $maxPrice = (float) ($prod['effectivePrice'] ?? $prod['price'] ?? 0);
-                    if ($maxPrice > 0 && $discountAmount > $maxPrice) {
-                        throw new ValidationException('Voucher discount amount exceeds the eligible product price.');
-                    }
-                    break;
-                }
-            }
-
-            $voucher['status'] = $effectiveStatus;
-            return $voucher;
         }
 
-        throw new ValidationException('Voucher code "' . $normalizedCode . '" was not found.');
+        $voucher = $voucherHashTable->get($normalizedCode);
+        if (!is_array($voucher)) {
+            throw new ValidationException('Voucher code "' . $normalizedCode . '" was not found.');
+        }
+
+        $voucherEmail = strtolower(trim((string) ($voucher['customerEmail'] ?? '')));
+        if ($voucherEmail !== '' && $voucherEmail !== 'all' && $voucherEmail !== '*') {
+            if ($normalizedEmail === '' || $voucherEmail !== $normalizedEmail) {
+                throw new ValidationException(
+                    'SQLSTATE[45000]: Voucher does not belong to the customer of this order (' . $voucher['customerEmail'] . ' only).'
+                );
+            }
+        }
+
+        $targetProductId = (string) ($voucher['furnitureId'] ?? $voucher['productId'] ?? '');
+        if ($targetProductId !== $productId) {
+            $targetName = (string) ($voucher['furnitureName'] ?? $voucher['productName'] ?? $targetProductId);
+            throw new ValidationException(
+                'This voucher is only valid for the selected product (' . $targetName . ').'
+            );
+        }
+
+        $effectiveStatus = $this->resolveVoucherStatus($voucher);
+        if ($effectiveStatus === 'Expired') {
+            throw new ValidationException('SQLSTATE[45000]: Voucher "' . $normalizedCode . '" has expired.');
+        }
+        if ($effectiveStatus === 'Revoked') {
+            throw new ValidationException('SQLSTATE[45000]: Voucher "' . $normalizedCode . '" has been revoked.');
+        }
+        if ($effectiveStatus !== 'Active' && $effectiveStatus !== 'Expiring Soon') {
+            throw new ValidationException('SQLSTATE[45000]: Voucher is not active (Status: ' . $effectiveStatus . ').');
+        }
+
+        $discountAmount = (float) ($voucher['discountAmount'] ?? $voucher['discountValue'] ?? 0);
+        if ($discountAmount <= 0) {
+            throw new ValidationException('Voucher discount amount must be greater than $0.');
+        }
+
+        // ALGORITHM B4 + B1: Sort catalog by ID via Insertion Sort and locate target product via Binary Search
+        $sortedProducts = $this->insertionSortProductsById($products);
+        $matchedProduct = $this->findProductByIdBinarySearch($sortedProducts, $targetProductId);
+        if ($matchedProduct !== null) {
+            $maxPrice = (float) ($matchedProduct['effectivePrice'] ?? $matchedProduct['price'] ?? 0);
+            if ($maxPrice > 0 && $discountAmount > $maxPrice) {
+                throw new ValidationException('Voucher discount amount exceeds the eligible product price.');
+            }
+        }
+
+        $voucher['status'] = $effectiveStatus;
+        return $voucher;
     }
 
     /**
@@ -478,26 +624,25 @@ class Product
         $products = isset($store['products']) && is_array($store['products']) ? $store['products'] : [];
         $vouchers = isset($store['vouchers']) && is_array($store['vouchers']) ? $store['vouchers'] : [];
 
-        $productMap = [];
-        foreach ($products as $prod) {
-            if (!empty($prod['id'])) {
-                $productMap[(string) $prod['id']] = $prod;
-            }
-        }
+        // ALGORITHM B4: Sort catalog products by ID using Insertion Sort so Binary Search (B1) can be used
+        $sortedProducts = $this->insertionSortProductsById($products);
 
         $matchedVoucher = null;
         $targetProductId = '';
         $normalizedCode = strtoupper(trim((string) $voucherCode));
 
         if ($normalizedCode !== '') {
+            // ALGORITHM B5: Hash function bucket lookup for voucher code
+            $voucherHashTable = new HashTable(53);
             foreach ($vouchers as $v) {
-                if (strtoupper(trim((string) ($v['code'] ?? ''))) === $normalizedCode) {
-                    $matchedVoucher = $v;
-                    break;
+                $vCode = strtoupper(trim((string) ($v['code'] ?? '')));
+                if ($vCode !== '') {
+                    $voucherHashTable->put($vCode, $v);
                 }
             }
+            $matchedVoucher = $voucherHashTable->get($normalizedCode);
 
-            if ($matchedVoucher === null) {
+            if (!is_array($matchedVoucher)) {
                 throw new ValidationException('Voucher code "' . $normalizedCode . '" was not found.');
             }
 
@@ -544,8 +689,10 @@ class Product
             if ($discountVal <= 0) {
                 throw new ValidationException('Voucher "' . $normalizedCode . '" has an invalid discount amount.');
             }
-            if (isset($productMap[$targetProductId])) {
-                $maxProdPrice = (float) ($productMap[$targetProductId]['effectivePrice'] ?? $productMap[$targetProductId]['price'] ?? 0);
+            // ALGORITHM B1: Binary Search for eligible product record by ID
+            $eligibleProduct = $this->findProductByIdBinarySearch($sortedProducts, $targetProductId);
+            if ($eligibleProduct !== null) {
+                $maxProdPrice = (float) ($eligibleProduct['effectivePrice'] ?? $eligibleProduct['price'] ?? 0);
                 if ($maxProdPrice > 0 && $discountVal > $maxProdPrice) {
                     throw new ValidationException(
                         'Voucher "' . $normalizedCode . '" discount ($' . $discountVal . ') exceeds the eligible product price ($' . $maxProdPrice . ').'
@@ -572,11 +719,12 @@ class Product
 
         foreach ($cartItems as $item) {
             $itemProductId = (string) ($item['productId'] ?? $item['furnitureId'] ?? '');
-            if (!isset($productMap[$itemProductId])) {
+            // ALGORITHM B1: Binary search lookup of cart line item's authoritative catalog product by ID
+            $authoritativeProduct = $this->findProductByIdBinarySearch($sortedProducts, $itemProductId);
+            if ($authoritativeProduct === null) {
                 throw new ValidationException('Invalid product "' . $itemProductId . '" in cart.');
             }
 
-            $authoritativeProduct = $productMap[$itemProductId];
             $quantity = max(1, (int) ($item['quantity'] ?? 1));
             $availableStock = max(0, (int) ($authoritativeProduct['inStockCount'] ?? 0));
             if ($availableStock <= 0) {

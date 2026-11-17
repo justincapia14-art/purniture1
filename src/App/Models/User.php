@@ -8,6 +8,7 @@ use Library\Database;
 use Library\Exceptions\AuthenticationException;
 use Library\Exceptions\DatabaseException;
 use Library\Exceptions\ValidationException;
+use Library\HashTable;
 
 /**
  * Part 3: User Model — Lillia and Rowena Furniture
@@ -200,9 +201,15 @@ class User
             }
         }
 
-        // JSON datastore + seeded accounts lookup
+        // ALGORITHM B2: Linear search
+        // Chapter: Chapter 5 (Searching and Sorting)
+        // Purpose: Sequentially scan the unsorted array of seeded and JSON-persisted accounts from index 0 to n-1 to match email and role during sign-in and duplicate-email registration checks.
+        // Time Complexity: O(n) worst and average case, O(1) best case
+        // Space Complexity: O(1) auxiliary space
         $accounts = $this->getAllSeedAndStoreUsers();
-        foreach ($accounts as $account) {
+        $accountCount = count($accounts);
+        for ($i = 0; $i < $accountCount; $i++) {
+            $account = $accounts[$i];
             if (strtolower((string) $account['email']) === $normalizedEmail) {
                 if ($role !== null && strcasecmp((string) $account['role'], $role) !== 0) {
                     continue;
@@ -258,7 +265,9 @@ class User
         }
 
         $passwordHash = password_hash($password, PASSWORD_DEFAULT);
-        $customerId = 'LR-CUS-' . (320 + (abs((int) crc32($email . '|' . microtime(true))) % 679));
+        // ALGORITHM B5: Hash function — map email + timestamp seed into a 0..678 bucket offset for LR-CUS-xxx ID
+        $bucketOffset = HashTable::hashKey($email . '|' . microtime(true), 679);
+        $customerId = 'LR-CUS-' . (320 + $bucketOffset);
 
         if ($this->db->isMySqlConnected()) {
             $this->db->query(

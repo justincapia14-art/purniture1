@@ -35,4 +35,38 @@ final class OrderCompletion
         }
     }
 
+    /**
+     * // DATA STRUCTURE A1: Queue
+     * // Chapter: Chapter 4 (Stacks and Queues)
+     * // Purpose: Enqueues incoming customer orders in arrival order and dequeues them in FIFO sequence
+     * //          to partition active workshop orders from completed sales orders in O(1) per operation.
+     * // Time Complexity: Enqueue: O(1) per order, Dequeue: O(1) per order, Total: O(n)
+     * // Space Complexity: O(n) to hold n orders in the FIFO queue
+     *
+     * @param array<int, mixed> $orders
+     * @return array{activeOrders: array<int, array<string, mixed>>, completedOrders: array<int, array<string, mixed>>}
+     */
+    public static function partitionOrdersByCompletion(array $orders): array
+    {
+        $orderQueue = new OrderQueue($orders);
+        $activeOrders = [];
+        $completedOrders = [];
+
+        while (!$orderQueue->isEmpty()) {
+            $order = $orderQueue->dequeue();
+            if ($order === null) {
+                continue;
+            }
+            if (self::isCompleted($order)) {
+                $completedOrders[] = $order;
+            } else {
+                $activeOrders[] = $order;
+            }
+        }
+
+        return [
+            'activeOrders'    => $activeOrders,
+            'completedOrders' => $completedOrders,
+        ];
+    }
 }

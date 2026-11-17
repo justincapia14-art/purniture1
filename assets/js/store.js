@@ -36,16 +36,175 @@ const CATEGORY_CODE_PREFIXES = {
   kitchen: 'KT',
 };
 
+// DATA STRUCTURE A1: Queue
+// Chapter: Chapter 4 (Stacks and Queues)
+// Purpose: Manage incoming customer orders in First-In, First-Out (FIFO) arrival order for active workshop vs. completed transaction partitioning and completed-order analytics processing without O(n) array shifting.
+// Time Complexity: Enqueue O(1), Dequeue O(1), Peek O(1), IsEmpty O(1), Size O(1)
+// Space Complexity: O(n) where n is the number of queued orders
+export class OrderQueue {
+  constructor() {
+    this.elements = [];
+    this.front = 0;
+    this.rear = 0;
+  }
+
+  enqueue(order) {
+    this.elements[this.rear] = order;
+    this.rear += 1;
+  }
+
+  dequeue() {
+    if (this.isEmpty()) return null;
+    const item = this.elements[this.front];
+    this.elements[this.front] = undefined;
+    this.front += 1;
+    if (this.front === this.rear) {
+      this.elements = [];
+      this.front = 0;
+      this.rear = 0;
+    }
+    return item;
+  }
+
+  peek() {
+    if (this.isEmpty()) return null;
+    return this.elements[this.front];
+  }
+
+  isEmpty() {
+    return this.front === this.rear;
+  }
+
+  size() {
+    return this.rear - this.front;
+  }
+}
+
+// ALGORITHM B5: Hash function
+// Chapter: Chapter 9 (Hash Tables)
+// Purpose: Convert string keys (Voucher Codes, Order IDs, Customer Emails, Entity ID seeds) into deterministic integer bucket indices using weighted ASCII character summation modulo bucket count, paired with Separate Chaining for O(1) average lookup.
+// Time Complexity: Hash computation O(k) where k is key length (O(1) for bounded keys); Lookup/Insert O(1) average case, O(n) worst case
+// Space Complexity: O(n + m) where n is stored entries and m is bucket count
+export function computeHashBucketIndex(key, bucketCount = 53) {
+  const safeBuckets = Math.max(1, Math.floor(Number(bucketCount) || 53));
+  const normalized = String(key || '').trim().toUpperCase();
+  let hashValue = 0;
+  for (let i = 0; i < normalized.length; i += 1) {
+    const asciiCode = normalized.charCodeAt(i);
+    hashValue = (hashValue * 31 + asciiCode) % safeBuckets;
+  }
+  return hashValue;
+}
+
+export class HashTable {
+  constructor(bucketCount = 53) {
+    this.bucketCount = Math.max(7, Math.floor(Number(bucketCount) || 53));
+    this.buckets = Array.from({ length: this.bucketCount }, () => []);
+    this.count = 0;
+  }
+
+  put(key, value) {
+    const normalizedKey = String(key || '').trim().toUpperCase();
+    const index = computeHashBucketIndex(normalizedKey, this.bucketCount);
+    const chain = this.buckets[index];
+    for (let i = 0; i < chain.length; i += 1) {
+      if (chain[i].key === normalizedKey) {
+        chain[i].value = value;
+        return;
+      }
+    }
+    chain.push({ key: normalizedKey, value });
+    this.count += 1;
+  }
+
+  get(key) {
+    const normalizedKey = String(key || '').trim().toUpperCase();
+    const index = computeHashBucketIndex(normalizedKey, this.bucketCount);
+    const chain = this.buckets[index];
+    for (let i = 0; i < chain.length; i += 1) {
+      if (chain[i].key === normalizedKey) {
+        return chain[i].value;
+      }
+    }
+    return null;
+  }
+
+  has(key) {
+    return this.get(key) !== null;
+  }
+
+  values() {
+    const all = [];
+    for (let b = 0; b < this.bucketCount; b += 1) {
+      const chain = this.buckets[b];
+      for (let i = 0; i < chain.length; i += 1) {
+        all.push(chain[i].value);
+      }
+    }
+    return all;
+  }
+}
+
+// ALGORITHM B4: Insertion sort
+// Chapter: Chapter 5 (Searching and Sorting)
+// Purpose: Sort catalog products in ascending order by ID/SKU in-place so Binary Search (B1) can be executed on the sorted array. Ideal for small or nearly-sorted catalog lists.
+// Time Complexity: O(n) best case (already sorted), O(n^2) average and worst case
+// Space Complexity: O(1) auxiliary space (in-place sorting on cloned array)
+export function insertionSortProductsById(products = []) {
+  const sorted = Array.isArray(products) ? [...products] : [];
+  const n = sorted.length;
+  for (let i = 1; i < n; i += 1) {
+    const currentItem = sorted[i];
+    const currentKey = String(currentItem?.id ?? currentItem?.productId ?? '').toUpperCase();
+    let j = i - 1;
+    while (
+      j >= 0 &&
+      String(sorted[j]?.id ?? sorted[j]?.productId ?? '').toUpperCase().localeCompare(currentKey) > 0
+    ) {
+      sorted[j + 1] = sorted[j];
+      j -= 1;
+    }
+    sorted[j + 1] = currentItem;
+  }
+  return sorted;
+}
+
+// ALGORITHM B1: Binary search
+// Chapter: Chapter 5 (Searching and Sorting)
+// Purpose: Locate a specific catalog product by its unique ID/SKU in a sorted product array by halving the search interval at each step during voucher validation, cart checkout pricing, and analytics attribution.
+// Time Complexity: O(log n) worst and average case, O(1) best case
+// Space Complexity: O(1) auxiliary space (iterative implementation)
+export function findProductByIdBinarySearch(sortedProducts = [], targetId = '') {
+  if (!Array.isArray(sortedProducts) || sortedProducts.length === 0) return null;
+  const targetKey = String(targetId || '').trim().toUpperCase();
+  if (!targetKey) return null;
+
+  let low = 0;
+  let high = sortedProducts.length - 1;
+
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2);
+    const midProduct = sortedProducts[mid];
+    const midKey = String(midProduct?.id ?? midProduct?.productId ?? '').trim().toUpperCase();
+    const cmp = midKey.localeCompare(targetKey);
+
+    if (cmp === 0) {
+      return midProduct;
+    }
+    if (cmp < 0) {
+      low = mid + 1;
+    } else {
+      high = mid - 1;
+    }
+  }
+
+  return null;
+}
+
 export function generateOwnEntityId(entityType = 'entity', seed = '', categoryId = '') {
   const cleanSeed = String(seed || '').trim();
   const cleanCategory = String(categoryId || '').trim().toLowerCase();
-  let hash = 2166136261;
   const source = `${entityType}:${cleanSeed}:${cleanCategory}:${Date.now()}:${Math.random()}`;
-  for (let i = 0; i < source.length; i += 1) {
-    hash ^= source.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  const unsigned = Math.abs(hash >>> 0);
   const ranges = {
     product: [100, 999],
     order: [8100, 9899],
@@ -58,7 +217,9 @@ export function generateOwnEntityId(entityType = 'entity', seed = '', categoryId
     payment: [9100, 9999],
   };
   const [minVal, maxVal] = ranges[entityType] || [100, 999];
-  const numericId = minVal + (unsigned % (maxVal - minVal + 1));
+  const rangeSpan = maxVal - minVal + 1;
+  // ALGORITHM B5: Hash function — map entity seed string into deterministic numeric ID range
+  const numericId = minVal + computeHashBucketIndex(source, rangeSpan);
 
   let codeId = `${entityType.toUpperCase()}-${numericId}`;
   if (entityType === 'product') {
@@ -289,18 +450,30 @@ export function buildAdminMessengerUrl(payload = {}) {
   )}${clientPart}`;
 }
 
+// ALGORITHM B2: Linear search
+// Chapter: Chapter 5 (Searching and Sorting)
+// Purpose: Sequentially scan every furniture item in the catalog from index 0 to n-1 to match multi-attribute text queries (name, SKU, category, finishes, description) where Binary Search cannot be used on free-text substrings.
+// Time Complexity: O(n) where n is the number of catalog products
+// Space Complexity: O(k) where k is the number of matching products returned (O(1) auxiliary search state)
 export function filterFurnitureItems(items, searchQuery = '', categoryId = 'all') {
   if (!Array.isArray(items)) return [];
   const normalizedQuery = String(searchQuery || '').trim().toLowerCase();
   const normalizedCategory = String(categoryId || 'all').trim().toLowerCase();
+  const matchedResults = [];
 
-  return items.filter((item) => {
+  for (let i = 0; i < items.length; i += 1) {
+    const item = items[i];
+    if (!item || typeof item !== 'object') continue;
+
     const matchesCategory =
       normalizedCategory === 'all' ||
       String(item.categoryId || '').toLowerCase() === normalizedCategory;
 
-    if (!matchesCategory) return false;
-    if (!normalizedQuery) return true;
+    if (!matchesCategory) continue;
+    if (!normalizedQuery) {
+      matchedResults.push(item);
+      continue;
+    }
 
     const finishesText = Array.isArray(item.finishes) ? item.finishes.join(' ') : '';
     const colorsText = Array.isArray(item.colorVariants)
@@ -324,8 +497,12 @@ export function filterFurnitureItems(items, searchQuery = '', categoryId = 'all'
       .join(' ')
       .toLowerCase();
 
-    return searchable.includes(normalizedQuery);
-  });
+    if (searchable.includes(normalizedQuery)) {
+      matchedResults.push(item);
+    }
+  }
+
+  return matchedResults;
 }
 
 export function resolveAuthoritativeLinePrice(item, catalog = null) {
@@ -333,7 +510,8 @@ export function resolveAuthoritativeLinePrice(item, catalog = null) {
   const finishName = item?.finish || item?.selectedFinish || '';
 
   if (Array.isArray(catalog) && catalog.length > 0 && productId) {
-    const authoritativeProduct = catalog.find((p) => p.id === productId);
+    const sortedCatalog = insertionSortProductsById(catalog);
+    const authoritativeProduct = findProductByIdBinarySearch(sortedCatalog, productId);
     if (authoritativeProduct) {
       return computeVariantPricing(authoritativeProduct, finishName).effectivePrice;
     }
@@ -641,9 +819,17 @@ export function validateVoucherForOrder(
     return { valid: false, discountAmount: 0, voucher: null, errorMessage: 'Enter a voucher code.' };
   }
 
-  const matched = Array.isArray(vouchers)
-    ? vouchers.find((v) => String(v.code || '').toUpperCase() === cleanCode)
-    : null;
+  // ALGORITHM B5: Hash function — index vouchers into a Separate Chaining HashTable by voucher code for O(1) average lookup
+  const voucherHashTable = new HashTable(53);
+  if (Array.isArray(vouchers)) {
+    for (let i = 0; i < vouchers.length; i += 1) {
+      const v = vouchers[i];
+      if (v && v.code) {
+        voucherHashTable.put(String(v.code).toUpperCase(), v);
+      }
+    }
+  }
+  const matched = voucherHashTable.get(cleanCode);
 
   if (!matched) {
     return {
@@ -709,7 +895,9 @@ export function validateVoucherForOrder(
   const targetProductName = matched.furnitureName || matched.productName || ' the selected product';
 
   if (!isLegacyPercent && Array.isArray(catalog) && catalog.length > 0 && targetProductId) {
-    const eligibleCatalogItem = catalog.find((p) => p.id === targetProductId);
+    // ALGORITHM B4 + B1: Insertion sort catalog by ID then Binary search for target product
+    const sortedCatalog = insertionSortProductsById(catalog);
+    const eligibleCatalogItem = findProductByIdBinarySearch(sortedCatalog, targetProductId);
     if (eligibleCatalogItem) {
       const maxPrice = Number(eligibleCatalogItem.effectivePrice ?? eligibleCatalogItem.price ?? 0);
       if (maxPrice > 0 && rawDiscountVal > maxPrice) {
@@ -887,10 +1075,12 @@ export function verifyAndCreateOrder({
   const normalizedLines = [];
   const requestedQtyByProduct = {};
 
+  const sortedCatalogForCheckout = Array.isArray(catalog) ? insertionSortProductsById(catalog) : [];
+
   for (const item of cartItems) {
     const productId = item?.product?.id || item?.productId || item?.furnitureId || item?.id || '';
     const authoritativeProduct = Array.isArray(catalog)
-      ? catalog.find((p) => p.id === productId)
+      ? findProductByIdBinarySearch(sortedCatalogForCheckout, productId)
       : item?.product;
 
     if (!authoritativeProduct) {
@@ -1206,14 +1396,24 @@ export function partitionOrdersByCompletion(orders = []) {
   const activeOrders = [];
   const completedOrders = [];
 
-  safeOrders.forEach((ord) => {
-    if (!ord || typeof ord !== 'object') return;
-    if (isOrderCompleted(ord)) {
-      completedOrders.push(ord);
-    } else {
-      activeOrders.push(ord);
+  // DATA STRUCTURE A1: Queue — enqueue orders in arrival sequence and dequeue in FIFO order
+  const orderQueue = new OrderQueue();
+  for (let i = 0; i < safeOrders.length; i += 1) {
+    const ord = safeOrders[i];
+    if (ord && typeof ord === 'object') {
+      orderQueue.enqueue(ord);
     }
-  });
+  }
+
+  while (!orderQueue.isEmpty()) {
+    const currentOrder = orderQueue.dequeue();
+    if (!currentOrder) continue;
+    if (isOrderCompleted(currentOrder)) {
+      completedOrders.push(currentOrder);
+    } else {
+      activeOrders.push(currentOrder);
+    }
+  }
 
   return {
     activeOrders,

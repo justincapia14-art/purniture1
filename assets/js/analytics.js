@@ -1,4 +1,8 @@
 import {
+  OrderQueue,
+  HashTable,
+  insertionSortProductsById,
+  findProductByIdBinarySearch,
   generateOwnEntityId,
   formatManilaDateTimeParts,
   formatVoucherIssuedDisplay,
@@ -10,6 +14,75 @@ import {
   computeMaterialInventoryMetrics,
   computeInventoryMetrics,
 } from './store.js';
+
+// ALGORITHM B3: Merge sort
+// Chapter: Chapter 6 (Recursion and Divide-and-Conquer / Merge Sort)
+// Purpose: Recursively divide and stably merge analytics ranking arrays (Best-Selling Products, Category Revenue, Top Customers, Consumed Materials) in guaranteed O(n log n) time.
+// Time Complexity: O(n log n) best, average, and worst case
+// Space Complexity: O(n) auxiliary space for temporary left/right subarrays
+export function mergeSortRecords(items = [], comparator) {
+  const safeItems = Array.isArray(items) ? [...items] : [];
+  const count = safeItems.length;
+  if (count <= 1) return safeItems;
+
+  const mid = Math.floor(count / 2);
+  const leftHalf = safeItems.slice(0, mid);
+  const rightHalf = safeItems.slice(mid);
+
+  const sortedLeft = mergeSortRecords(leftHalf, comparator);
+  const sortedRight = mergeSortRecords(rightHalf, comparator);
+
+  return mergeSortedHalves(sortedLeft, sortedRight, comparator);
+}
+
+function mergeSortedHalves(left, right, comparator) {
+  const merged = [];
+  let i = 0;
+  let j = 0;
+  while (i < left.length && j < right.length) {
+    if (comparator(left[i], right[j]) <= 0) {
+      merged.push(left[i]);
+      i += 1;
+    } else {
+      merged.push(right[j]);
+      j += 1;
+    }
+  }
+  while (i < left.length) {
+    merged.push(left[i]);
+    i += 1;
+  }
+  while (j < right.length) {
+    merged.push(right[j]);
+    j += 1;
+  }
+  return merged;
+}
+
+// ALGORITHM B4: Insertion sort
+// Chapter: Chapter 5 (Searching and Sorting)
+// Purpose: Sort the filtered Low-Performing Products list in ascending order by quantitySold and totalRevenue in-place with O(1) auxiliary space.
+// Time Complexity: O(n) best case, O(n^2) average and worst case
+// Space Complexity: O(1) auxiliary space
+export function insertionSortLowPerforming(items = []) {
+  const sorted = Array.isArray(items) ? [...items] : [];
+  for (let i = 1; i < sorted.length; i += 1) {
+    const keyItem = sorted[i];
+    const keyQty = Number(keyItem?.quantitySold ?? 0);
+    const keyRev = Number(keyItem?.totalRevenue ?? 0);
+    let j = i - 1;
+    while (j >= 0) {
+      const currQty = Number(sorted[j]?.quantitySold ?? 0);
+      const currRev = Number(sorted[j]?.totalRevenue ?? 0);
+      const shouldShift = currQty > keyQty || (currQty === keyQty && currRev > keyRev);
+      if (!shouldShift) break;
+      sorted[j + 1] = sorted[j];
+      j -= 1;
+    }
+    sorted[j + 1] = keyItem;
+  }
+  return sorted;
+}
 
 /* ==========================================================================
    MONTHLY ANALYTICS & BUSINESS REPORTS ENGINE (ADMIN DASHBOARD)
@@ -303,13 +376,23 @@ function getHistoricalOrderAmount(order) {
 }
 
 function deduplicateOrdersList(orders = []) {
-  const seen = new Set();
-  const unique = [];
+  // DATA STRUCTURE A1: Queue & ALGORITHM B5: Hash function
+  // Enqueue incoming orders into a FIFO OrderQueue and deduplicate by order key via HashTable
+  const incomingQueue = new OrderQueue();
   for (const ord of Array.isArray(orders) ? orders : []) {
-    if (!ord || typeof ord !== 'object') continue;
+    if (ord && typeof ord === 'object') {
+      incomingQueue.enqueue(ord);
+    }
+  }
+
+  const seenTable = new HashTable(53);
+  const unique = [];
+  while (!incomingQueue.isEmpty()) {
+    const ord = incomingQueue.dequeue();
+    if (!ord) continue;
     const key = String(ord.orderId || ord.orderNumber || ord.id || '').trim().toUpperCase();
-    if (key && seen.has(key)) continue;
-    if (key) seen.add(key);
+    if (key && seenTable.has(key)) continue;
+    if (key) seenTable.put(key, true);
     unique.push(ord);
   }
   return unique;
@@ -351,12 +434,12 @@ export function computeMonthlyAnalyticsReport(
     ? storeData.inventoryTransactions
     : [];
 
-  const productById = new Map();
-  const productBySku = new Map();
+  // ALGORITHM B4 + B1: Sort catalog products by ID using Insertion Sort for Binary Search lookup, and index SKUs in HashTable (B5)
+  const sortedProductsById = insertionSortProductsById(products);
+  const productBySkuTable = new HashTable(53);
   products.forEach((p) => {
-    if (p?.id) productById.set(String(p.id), p);
-    if (p?.sku) productBySku.set(String(p.sku).toUpperCase(), p);
-    if (p?.productId) productBySku.set(String(p.productId).toUpperCase(), p);
+    if (p?.sku) productBySkuTable.put(String(p.sku).toUpperCase(), p);
+    if (p?.productId) productBySkuTable.put(String(p.productId).toUpperCase(), p);
   });
 
   const isWithinRange = (dateStr, startStr, endStr) => {
@@ -632,8 +715,8 @@ export function computeMonthlyAnalyticsReport(
 
   currentMetrics.periodOrders.forEach((ord) => {
     const matchedProd =
-      productById.get(String(ord.furnitureId || '')) ||
-      productBySku.get(String(ord.sku || '').toUpperCase()) ||
+      findProductByIdBinarySearch(sortedProductsById, String(ord.furnitureId || '')) ||
+      productBySkuTable.get(String(ord.sku || '').toUpperCase()) ||
       null;
     const slug = normalizeCategorySlug(ord, matchedProd);
     if (!categoryMap.has(slug)) {
@@ -658,13 +741,15 @@ export function computeMonthlyAnalyticsReport(
     1,
     Array.from(categoryMap.values()).reduce((sum, c) => sum + c.revenue, 0)
   );
-  const categoryRevenue = Array.from(categoryMap.values())
-    .map((c) => ({
+  // ALGORITHM B3: Merge sort — rank categories by revenue descending
+  const categoryRevenue = mergeSortRecords(
+    Array.from(categoryMap.values()).map((c) => ({
       ...c,
       sharePercent:
         currentMetrics.totalRevenue > 0 ? Math.round((c.revenue / totalCatRev) * 1000) / 10 : 0,
-    }))
-    .sort((a, b) => b.revenue - a.revenue || b.unitsSold - a.unitsSold);
+    })),
+    (a, b) => b.revenue - a.revenue || b.unitsSold - a.unitsSold
+  );
 
   const revComparison = computePercentageChange(
     currentMetrics.totalRevenue,
@@ -731,8 +816,8 @@ export function computeMonthlyAnalyticsReport(
     if (itemKey) seenProdOrderItems.add(itemKey);
 
     const matchedProd =
-      productById.get(String(ord.furnitureId || '')) ||
-      productBySku.get(String(ord.sku || '').toUpperCase()) ||
+      findProductByIdBinarySearch(sortedProductsById, String(ord.furnitureId || '')) ||
+      productBySkuTable.get(String(ord.sku || '').toUpperCase()) ||
       null;
     const mapKey = matchedProd ? String(matchedProd.id) : String(ord.furnitureId || ord.sku || ord.id);
     if (!productSalesMap.has(mapKey)) {
@@ -760,18 +845,20 @@ export function computeMonthlyAnalyticsReport(
     entry.totalRevenue += getHistoricalOrderAmount(ord);
   });
 
-  const allProductRankings = Array.from(productSalesMap.values())
-    .sort((a, b) => b.totalRevenue - a.totalRevenue || b.quantitySold - a.quantitySold || a.name.localeCompare(b.name))
-    .map((item, idx) => ({
-      ...item,
-      rank: idx + 1,
-    }));
+  // ALGORITHM B3: Merge sort — rank all catalog products by realized revenue, units sold, and name
+  const allProductRankings = mergeSortRecords(
+    Array.from(productSalesMap.values()),
+    (a, b) => b.totalRevenue - a.totalRevenue || b.quantitySold - a.quantitySold || a.name.localeCompare(b.name)
+  ).map((item, idx) => ({
+    ...item,
+    rank: idx + 1,
+  }));
 
   const topFiveProducts = allProductRankings.slice(0, 5);
-  const lowPerformingProducts = allProductRankings
-    .filter((item) => item.quantitySold <= 1)
-    .sort((a, b) => a.quantitySold - b.quantitySold || a.totalRevenue - b.totalRevenue)
-    .slice(0, 5);
+  // ALGORITHM B4: Insertion sort — sort low-performing products in ascending order by quantitySold and totalRevenue
+  const lowPerformingProducts = insertionSortLowPerforming(
+    allProductRankings.filter((item) => item.quantitySold <= 1)
+  ).slice(0, 5);
 
   const bestSellingProducts = {
     allRankedProducts: allProductRankings,
@@ -911,13 +998,15 @@ export function computeMonthlyAnalyticsReport(
     (c) => c.periodOrders > 0 && c.lifetimeOrders > 1
   );
   const lifetimeReturningCustomers = allCustomerStats.filter((c) => c.lifetimeOrders > 1);
-  const topCustomers = [...allCustomerStats]
-    .sort((a, b) => b.periodSpent - a.periodSpent || b.lifetimeSpent - a.lifetimeSpent)
-    .map((c, idx) => ({
-      ...c,
-      rank: idx + 1,
-      isReturning: c.lifetimeOrders > 1,
-    }));
+  // ALGORITHM B3: Merge sort — rank customers by periodSpent and lifetimeSpent descending
+  const topCustomers = mergeSortRecords(
+    allCustomerStats,
+    (a, b) => b.periodSpent - a.periodSpent || b.lifetimeSpent - a.lifetimeSpent
+  ).map((c, idx) => ({
+    ...c,
+    rank: idx + 1,
+    isReturning: c.lifetimeOrders > 1,
+  }));
 
   const monthlyRegistrationTrend = [];
   for (let m = 1; m <= 12; m += 1) {
@@ -1077,7 +1166,9 @@ export function computeMonthlyAnalyticsReport(
     consumedByMaterial.set(mId, existing);
   });
 
-  const materialsConsumedInPeriod = Array.from(consumedByMaterial.values()).sort(
+  // ALGORITHM B3: Merge sort — rank consumed materials by estimatedCost and quantityConsumed descending
+  const materialsConsumedInPeriod = mergeSortRecords(
+    Array.from(consumedByMaterial.values()),
     (a, b) => b.estimatedCost - a.estimatedCost || b.quantityConsumed - a.quantityConsumed
   );
 
