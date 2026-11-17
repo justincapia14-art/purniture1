@@ -49,11 +49,11 @@ if (!function_exists('currentUser')) {
 
 if (!function_exists('formatCurrency')) {
     /**
-     * Format a numeric dollar value.
+     * Format a numeric Philippine Peso value (₱1,250.00).
      */
     function formatCurrency(float|int|string $amount): string
     {
-        return '$' . number_format((float) $amount, 0);
+        return '₱' . number_format((float) $amount, 2, '.', ',');
     }
 }
 

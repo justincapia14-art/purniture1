@@ -171,35 +171,35 @@ INSERT INTO `Customer` (`CustomerID`, `FullName`, `Email`, `PasswordHash`, `Phon
 ('LR-CUS-308', 'Marcus Sterling', 'm.sterling@sterlingcapital.io', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '+1 (312) 555-0164', '880 Lake Shore Drive, Apt 32B, Chicago');
 
 INSERT INTO `Product` (`ProductID`, `CategoryID`, `ProductName`, `BasePrice`) VALUES
-('LR-LV-014', 'CAT-LV-110', 'Rowena Curved Bouclé Lounge Sofa', 4850.00),
-('LR-DN-108', 'CAT-DN-220', 'Lillia Monolith Solid Walnut Dining Table', 4200.00),
-('LR-BD-204', 'CAT-BD-330', 'Serene Belgian Linen Platform Bed (King)', 3650.00),
-('LR-OF-315', 'CAT-OF-440', 'Quarter-Sawn Oak Architect Work Desk', 2150.00),
-('LR-OF-302', 'CAT-OF-440', 'Mercier Fluted Walnut Sideboard Credenza', 3890.00),
-('LR-LV-029', 'CAT-LV-110', 'Cavana Sculpted White Oak Lounge Chair', 1680.00),
-('LR-LV-042', 'CAT-LV-110', 'Verona Honed Travertine Plinth Table', 2350.00),
-('LR-DN-115', 'CAT-DN-220', 'Solenne Woven Cord Dining Chair (Set of 2)', 1290.00),
-('LR-BD-219', 'CAT-BD-330', 'Cantilevered Ash Bedside Nightstand (Pair)', 1180.00),
-('LR-KT-401', 'CAT-KT-550', 'Valen Travertine & Walnut Kitchen Island', 3850.00),
-('LR-KT-412', 'CAT-KT-550', 'Soren Sculpted Oak Counter Stools (Set of 2)', 1450.00);
+('LR-LV-014', 'CAT-LV-110', 'Rowena Curved Bouclé Lounge Sofa', 281300.00),
+('LR-DN-108', 'CAT-DN-220', 'Lillia Monolith Solid Walnut Dining Table', 243600.00),
+('LR-BD-204', 'CAT-BD-330', 'Serene Belgian Linen Platform Bed (King)', 211700.00),
+('LR-OF-315', 'CAT-OF-440', 'Quarter-Sawn Oak Architect Work Desk', 124700.00),
+('LR-OF-302', 'CAT-OF-440', 'Mercier Fluted Walnut Sideboard Credenza', 225620.00),
+('LR-LV-029', 'CAT-LV-110', 'Cavana Sculpted White Oak Lounge Chair', 97440.00),
+('LR-LV-042', 'CAT-LV-110', 'Verona Honed Travertine Plinth Table', 136300.00),
+('LR-DN-115', 'CAT-DN-220', 'Solenne Woven Cord Dining Chair (Set of 2)', 74820.00),
+('LR-BD-219', 'CAT-BD-330', 'Cantilevered Ash Bedside Nightstand (Pair)', 68440.00),
+('LR-KT-401', 'CAT-KT-550', 'Valen Travertine & Walnut Kitchen Island', 223300.00),
+('LR-KT-412', 'CAT-KT-550', 'Soren Sculpted Oak Counter Stools (Set of 2)', 84100.00);
 
 INSERT INTO `Material` (`MaterialID`, `MaterialName`, `MaterialType`, `Unit`, `UnitCost`, `StockQuantity`) VALUES
-('MAT-WAL-01', 'FAS American Black Walnut Slabs', 'Solid Timber', 'bd ft', 28.00, 180.00),
-('MAT-OAK-02', 'Quarter-Sawn European White Oak', 'Solid Timber', 'bd ft', 22.00, 145.00),
-('MAT-ASH-03', 'Kiln-Dried European Ash Timber', 'Solid Timber', 'bd ft', 19.00, 28.00),
-('MAT-BCL-04', 'Heavyweight Belgian Wool Bouclé', 'Upholstery Textile', 'sq m', 68.00, 84.00),
-('MAT-LIN-05', 'Unbleached Belgian Flax Linen', 'Upholstery Textile', 'sq m', 54.00, 62.00),
-('MAT-TRV-06', 'Honed Roman Travertine Blocks', 'Architectural Stone', 'slabs', 420.00, 6.00),
-('MAT-BRS-07', 'Solid Aged Brass Hardware & Butterfly Keys', 'Hardware & Joinery', 'sets', 95.00, 32.00),
-('MAT-CRD-08', 'Danish Waxed Paper Cord & Cold-Pressed Linseed Oil', 'Cord & Finishes', 'rolls', 42.00, 24.00);
+('MAT-WAL-01', 'FAS American Black Walnut Slabs', 'Solid Timber', 'bd ft', 1624.00, 180.00),
+('MAT-OAK-02', 'Quarter-Sawn European White Oak', 'Solid Timber', 'bd ft', 1276.00, 145.00),
+('MAT-ASH-03', 'Kiln-Dried European Ash Timber', 'Solid Timber', 'bd ft', 1102.00, 28.00),
+('MAT-BCL-04', 'Heavyweight Belgian Wool Bouclé', 'Upholstery Textile', 'sq m', 3944.00, 84.00),
+('MAT-LIN-05', 'Unbleached Belgian Flax Linen', 'Upholstery Textile', 'sq m', 3132.00, 62.00),
+('MAT-TRV-06', 'Honed Roman Travertine Blocks', 'Architectural Stone', 'slabs', 24360.00, 6.00),
+('MAT-BRS-07', 'Solid Aged Brass Hardware & Butterfly Keys', 'Hardware & Joinery', 'sets', 5510.00, 32.00),
+('MAT-CRD-08', 'Danish Waxed Paper Cord & Cold-Pressed Linseed Oil', 'Cord & Finishes', 'rolls', 2436.00, 24.00);
 
 INSERT INTO `Voucher` (`VoucherID`, `CustomerID`, `ProductID`, `AdminID`, `Code`, `DiscountValue`, `ExpiryDate`, `ExpiresAt`, `Status`) VALUES
-('VCH-LR-740', 'LR-CUS-301', 'LR-LV-014', 'ADM-LR-901', 'VCH-ROWENA-SOFA400', 400.00, '2026-12-31', '2026-12-31 23:59:59', 'Active'),
-('VCH-LR-735', 'LR-CUS-301', 'LR-DN-108', 'ADM-LR-901', 'VCH-ROWENA-WALNUT350', 350.00, '2026-12-31', '2026-12-31 23:59:59', 'Active'),
-('VCH-LR-725', 'LR-CUS-302', 'LR-BD-204', 'ADM-LR-901', 'VCH-JULIAN-BED250', 250.00, '2026-12-15', '2026-12-15 23:59:59', 'Active'),
-('VCH-LR-710', 'LR-CUS-304', 'LR-OF-315', 'ADM-LR-901', 'VCH-ELENA-DESK300', 300.00, '2026-12-10', '2026-12-10 23:59:59', 'Used'),
-('VCH-LR-705', 'LR-CUS-308', 'LR-LV-029', 'ADM-LR-901', 'VCH-MARCUS-CHAIR200', 200.00, '2026-10-31', '2026-10-31 23:59:59', 'Expired'),
-('VCH-LR-690', 'LR-CUS-302', 'LR-OF-302', 'ADM-LR-901', 'VCH-JULIAN-CREDENZA150', 150.00, '2026-12-20', '2026-12-20 23:59:59', 'Revoked');
+('VCH-LR-740', 'LR-CUS-301', 'LR-LV-014', 'ADM-LR-901', 'VCH-ROWENA-SOFA400', 23200.00, '2026-12-31', '2026-12-31 23:59:59', 'Active'),
+('VCH-LR-735', 'LR-CUS-301', 'LR-DN-108', 'ADM-LR-901', 'VCH-ROWENA-WALNUT350', 20300.00, '2026-12-31', '2026-12-31 23:59:59', 'Active'),
+('VCH-LR-725', 'LR-CUS-302', 'LR-BD-204', 'ADM-LR-901', 'VCH-JULIAN-BED250', 14500.00, '2026-12-15', '2026-12-15 23:59:59', 'Active'),
+('VCH-LR-710', 'LR-CUS-304', 'LR-OF-315', 'ADM-LR-901', 'VCH-ELENA-DESK300', 17400.00, '2026-12-10', '2026-12-10 23:59:59', 'Used'),
+('VCH-LR-705', 'LR-CUS-308', 'LR-LV-029', 'ADM-LR-901', 'VCH-MARCUS-CHAIR200', 11600.00, '2026-10-31', '2026-10-31 23:59:59', 'Expired'),
+('VCH-LR-690', 'LR-CUS-302', 'LR-OF-302', 'ADM-LR-901', 'VCH-JULIAN-CREDENZA150', 8700.00, '2026-12-20', '2026-12-20 23:59:59', 'Revoked');
 
 INSERT INTO `Customer_Order` (`OrderID`, `CustomerID`, `OrderDate`, `CompletedAt`, `Status`) VALUES
 ('ORD-2026-8841', 'LR-CUS-301', '2026-10-18', NULL, 'InProduction'),
@@ -212,14 +212,14 @@ INSERT INTO `Customer_Order` (`OrderID`, `CustomerID`, `OrderDate`, `CompletedAt
 ('ORD-2026-8862', 'LR-CUS-302', '2026-11-15', NULL, 'InProduction');
 
 INSERT INTO `Order_Item` (`OrderItemID`, `OrderID`, `ProductID`, `VoucherID`, `ItemType`, `Quantity`, `UnitPrice`) VALUES
-('ITM-2026-5841', 'ORD-2026-8841', 'LR-DN-108', NULL, 'Custom', 1, 3696.00),
-('ITM-2026-5834', 'ORD-2026-8834', 'LR-LV-014', NULL, 'Standard', 1, 4365.00),
-('ITM-2026-5829', 'ORD-2026-8829', 'LR-OF-302', NULL, 'Standard', 2, 3307.00),
-('ITM-2026-5815', 'ORD-2026-8815', 'LR-BD-204', NULL, 'Standard', 1, 3650.00),
-('ITM-2026-5850', 'ORD-2026-8850', 'LR-LV-029', NULL, 'Standard', 2, 1840.00),
-('ITM-2026-5854', 'ORD-2026-8854', 'LR-OF-315', 'VCH-LR-710', 'Standard', 1, 1850.00),
-('ITM-2026-5858', 'ORD-2026-8858', 'LR-DN-115', NULL, 'Standard', 3, 1290.00),
-('ITM-2026-5862', 'ORD-2026-8862', 'LR-OF-315', NULL, 'Standard', 1, 2150.00);
+('ITM-2026-5841', 'ORD-2026-8841', 'LR-DN-108', NULL, 'Custom', 1, 214368.00),
+('ITM-2026-5834', 'ORD-2026-8834', 'LR-LV-014', NULL, 'Standard', 1, 253170.00),
+('ITM-2026-5829', 'ORD-2026-8829', 'LR-OF-302', NULL, 'Standard', 2, 191777.00),
+('ITM-2026-5815', 'ORD-2026-8815', 'LR-BD-204', NULL, 'Standard', 1, 211700.00),
+('ITM-2026-5850', 'ORD-2026-8850', 'LR-LV-029', NULL, 'Standard', 2, 106720.00),
+('ITM-2026-5854', 'ORD-2026-8854', 'LR-OF-315', 'VCH-LR-710', 'Standard', 1, 107300.00),
+('ITM-2026-5858', 'ORD-2026-8858', 'LR-DN-115', NULL, 'Standard', 3, 74820.00),
+('ITM-2026-5862', 'ORD-2026-8862', 'LR-OF-315', NULL, 'Standard', 1, 124700.00);
 
 INSERT INTO `Order_Item_Material` (`OrderItemID`, `MaterialID`, `QuantityUsed`) VALUES
 ('ITM-2026-5841', 'MAT-WAL-01', 48.00),
@@ -235,13 +235,13 @@ INSERT INTO `Customization` (`CustomizationID`, `OrderItemID`, `MaterialID`, `Le
 ('CSM-2026-6841', 'ITM-2026-5841', 'MAT-WAL-01', 260.00, 110.00, 75.00, 'Hand-Rubbed Natural Walnut', 'Book-matched walnut slab approved by client via slab photography.', 0.00);
 
 INSERT INTO `Payment` (`PaymentID`, `OrderID`, `PaymentDate`, `Amount`) VALUES
-('PAY-2026-9841', 'ORD-2026-8841', '2026-10-18', 1848.00),
-('PAY-2026-9834', 'ORD-2026-8834', '2026-10-04', 4365.00),
-('PAY-2026-9829', 'ORD-2026-8829', '2026-10-11', 3307.00),
-('PAY-2026-9815', 'ORD-2026-8815', '2026-09-26', 3650.00),
-('PAY-2026-9854', 'ORD-2026-8854', '2026-11-04', 3165.00),
-('PAY-2026-9858', 'ORD-2026-8858', '2026-11-11', 3870.00),
-('PAY-2026-9862', 'ORD-2026-8862', '2026-11-15', 2150.00);
+('PAY-2026-9841', 'ORD-2026-8841', '2026-10-18', 107184.00),
+('PAY-2026-9834', 'ORD-2026-8834', '2026-10-04', 253170.00),
+('PAY-2026-9829', 'ORD-2026-8829', '2026-10-11', 191777.00),
+('PAY-2026-9815', 'ORD-2026-8815', '2026-09-26', 211700.00),
+('PAY-2026-9854', 'ORD-2026-8854', '2026-11-04', 183570.00),
+('PAY-2026-9858', 'ORD-2026-8858', '2026-11-11', 224460.00),
+('PAY-2026-9862', 'ORD-2026-8862', '2026-11-15', 124700.00);
 
 INSERT INTO `Production_Task` (`TaskID`, `OrderItemID`, `StartDate`, `EndDate`, `TaskStatus`) VALUES
 ('TSK-2026-2841', 'ITM-2026-5841', '2026-10-18', NULL, 'InProgress'),

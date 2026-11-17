@@ -283,7 +283,7 @@ export function buildProductRecord(input, existingProduct = null) {
     existingProduct?.categoryName ||
     'Dining Room';
 
-  const price = Math.max(50, Math.round(Number(input?.price ?? existingProduct?.price ?? 2500)));
+  const price = Math.max(2900, Math.round(Number(input?.price ?? existingProduct?.price ?? 145000)));
   const discountPercent = Math.min(
     80,
     Math.max(0, Math.round(Number(input?.discountPercent ?? existingProduct?.discountPercent ?? 0)))
@@ -794,6 +794,12 @@ export function computeVoucherStatusInfo(voucher, nowMs = Date.now()) {
   };
 }
 
+export function formatPhpCurrency(amount) {
+  const num = Number(amount || 0);
+  const safe = Number.isFinite(num) ? num : 0;
+  return `₱${safe.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 export function formatVoucherBenefitLabel(voucher) {
   if (!voucher || typeof voucher !== 'object') return '';
   if (voucher.discountType === 'percentage' || Number(voucher.discountPercent || 0) > 0) {
@@ -801,7 +807,7 @@ export function formatVoucherBenefitLabel(voucher) {
     return `${pct}% OFF`;
   }
   const amt = Number(voucher.discountAmount ?? voucher.discountValue ?? 0);
-  return `$${Math.round(amt).toLocaleString('en-US')} OFF`;
+  return `${formatPhpCurrency(amt)} OFF`;
 }
 
 export function validateVoucherForOrder(
@@ -905,7 +911,7 @@ export function validateVoucherForOrder(
           valid: false,
           discountAmount: 0,
           voucher: matched,
-          errorMessage: `Voucher "${cleanCode}" discount ($${rawDiscountVal}) exceeds the eligible product price ($${maxPrice}).`,
+          errorMessage: `Voucher "${cleanCode}" discount (${formatPhpCurrency(rawDiscountVal)}) exceeds the eligible product price (${formatPhpCurrency(maxPrice)}).`,
         };
       }
     }
@@ -1035,7 +1041,7 @@ export function calculateOrderPricing(lineItems, voucherOrDiscount = 0, catalog 
     : Math.min(rawSubtotal, Math.max(0, Number(voucherOrDiscount || 0)));
 
   const subtotal = Math.max(0, rawSubtotal - voucherDiscountAmount);
-  const whiteGloveDeliveryFee = subtotal === 0 ? 0 : subtotal >= 5000 ? 0 : 250;
+  const whiteGloveDeliveryFee = subtotal === 0 ? 0 : subtotal >= 290000 ? 0 : 14500;
   const totalAmount = subtotal + whiteGloveDeliveryFee;
 
   return {
@@ -1282,10 +1288,10 @@ export function createCustomOrderRequest({
 
   const variantPricing = computeVariantPricing(product, colorFinish);
   const dimensionFactor = Math.max(0, lengthCm + widthCm - 300);
-  const extraCost = Math.round(dimensionFactor * 3.5 + Number(material.unitCost || 25) * 4);
+  const extraCost = Math.round(dimensionFactor * 203 + Number(material.unitCost || 1450) * 4);
   const unitPrice = variantPricing.effectivePrice + extraCost;
   const rawSubtotal = unitPrice * quantity;
-  const deliveryFee = rawSubtotal >= 5000 ? 0 : 250;
+  const deliveryFee = rawSubtotal >= 290000 ? 0 : 14500;
   const totalAmount = rawSubtotal + deliveryFee;
   const depositPaid = Math.round(totalAmount * 0.5);
 
@@ -1691,8 +1697,8 @@ export function validateNewFurnitureInput(input) {
   if (sku.length < 4) {
     return { valid: false, errorMessage: 'SKU Code must be at least 4 characters (e.g., LR-DN-210).' };
   }
-  if (!Number.isFinite(price) || price < 50) {
-    return { valid: false, errorMessage: 'Base Price must be at least $50.' };
+  if (!Number.isFinite(price) || price < 2900) {
+    return { valid: false, errorMessage: 'Base Price must be at least ₱2,900.00.' };
   }
   if (!Number.isFinite(inStockCount) || inStockCount < 0) {
     return { valid: false, errorMessage: 'Stock quantity cannot be negative.' };
@@ -1736,7 +1742,7 @@ export function validateMaterialInput(input) {
 export function buildMaterialRecord(input, existingMaterial = null) {
   const stockQuantity = Math.max(0, Number(input?.stockQuantity ?? existingMaterial?.stockQuantity ?? 0));
   const minStockLevel = Math.max(0, Number(input?.minStockLevel ?? existingMaterial?.minStockLevel ?? 10));
-  const unitCost = Math.max(0, Number(input?.unitCost ?? existingMaterial?.unitCost ?? 25));
+  const unitCost = Math.max(0, Number(input?.unitCost ?? existingMaterial?.unitCost ?? 1450));
 
   const rawMatCode = String(
     input?.code ??
@@ -2756,15 +2762,15 @@ export function validateAndBuildOfferProposal(offerInput = {}, product = null, s
   ) {
     return {
       ok: false,
-      errorMessage: 'Please enter a valid proposed price greater than $0.',
+      errorMessage: 'Please enter a valid proposed price greater than ₱0.00.',
       proposal: null,
     };
   }
 
-  if (numericProposed < 25) {
+  if (numericProposed < 1450) {
     return {
       ok: false,
-      errorMessage: 'Proposed price must be at least $25.',
+      errorMessage: 'Proposed price must be at least ₱1,450.00.',
       proposal: null,
     };
   }
@@ -3121,7 +3127,7 @@ export function validateAndCreateVoucher(
   if (!Number.isFinite(rawDiscount) || rawDiscount <= 0) {
     return {
       ok: false,
-      errorMessage: 'Discount Amount ($) must be greater than $0.',
+      errorMessage: 'Discount Amount (₱) must be greater than ₱0.00.',
       voucher: null,
     };
   }
@@ -3132,7 +3138,7 @@ export function validateAndCreateVoucher(
   if (maxProductPrice > 0 && discountAmount > maxProductPrice) {
     return {
       ok: false,
-      errorMessage: `Discount Amount ($${discountAmount.toLocaleString('en-US')}) cannot exceed the product price ($${maxProductPrice.toLocaleString('en-US')} for ${matchedProduct.name}).`,
+      errorMessage: `Discount Amount (${formatPhpCurrency(discountAmount)}) cannot exceed the product price (${formatPhpCurrency(maxProductPrice)} for ${matchedProduct.name}).`,
       voucher: null,
     };
   }

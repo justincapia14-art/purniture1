@@ -148,22 +148,22 @@ describe('Pure JavaScript & Server Store Logic Tests', () => {
   });
 
   it('computes color variant pricing with positive and negative price deltas and discounts', () => {
-    const sofa = INITIAL_FURNITURE_ITEMS[0]; // $4850 base, 10% discount
+    const sofa = INITIAL_FURNITURE_ITEMS[0]; // ₱281,300.00 base, 10% discount
     const baseVariant = computeVariantPricing(sofa, 'Warm Oat Bouclé / Natural Oak');
     assert.equal(baseVariant.priceDelta, 0);
-    assert.equal(baseVariant.variantBasePrice, 4850);
-    assert.equal(baseVariant.effectivePrice, 4365);
+    assert.equal(baseVariant.variantBasePrice, 281300);
+    assert.equal(baseVariant.effectivePrice, 253170);
 
     const indigoVariant = computeVariantPricing(sofa, 'Midnight Indigo Mohair / Ebonized Oak');
-    assert.equal(indigoVariant.priceDelta, 520);
-    assert.equal(indigoVariant.variantBasePrice, 5370);
-    assert.equal(indigoVariant.effectivePrice, Math.round(5370 * 0.9));
+    assert.equal(indigoVariant.priceDelta, 30160);
+    assert.equal(indigoVariant.variantBasePrice, 311460);
+    assert.equal(indigoVariant.effectivePrice, Math.round(311460 * 0.9));
 
-    const diningTable = INITIAL_FURNITURE_ITEMS[1]; // $4200 base, 12% discount
+    const diningTable = INITIAL_FURNITURE_ITEMS[1]; // ₱243,600.00 base, 12% discount
     const oakVariant = computeVariantPricing(diningTable, 'Quarter-Sawn White Oak');
-    assert.equal(oakVariant.priceDelta, -150);
-    assert.equal(oakVariant.variantBasePrice, 4050);
-    assert.equal(oakVariant.effectivePrice, Math.round(4050 * 0.88));
+    assert.equal(oakVariant.priceDelta, -8700);
+    assert.equal(oakVariant.variantBasePrice, 234900);
+    assert.equal(oakVariant.effectivePrice, Math.round(234900 * 0.88));
   });
 
   it('builds Admin Messenger redirect URLs with offer and color metadata', () => {
@@ -171,12 +171,12 @@ describe('Pure JavaScript & Server Store Logic Tests', () => {
       mode: 'make-offer',
       sku: 'LR-LV-014',
       colorName: 'Raw Umber Wool',
-      proposedPrice: 4100,
+      proposedPrice: 237800,
       clientEmail: 'rowena.vance@vancearchitects.com',
     });
     assert.ok(url.startsWith('https://www.messenger.com/t/100000505712325?ref='));
     assert.ok(url.includes('lr-lv-014'));
-    assert.ok(url.includes('offer-4100'));
+    assert.ok(url.includes('offer-237800'));
     assert.ok(url.includes('client=rowena.vance%40vancearchitects.com'));
   });
 
@@ -188,7 +188,7 @@ describe('Pure JavaScript & Server Store Logic Tests', () => {
       ['furn-lv-01']
     );
     assert.equal(validCheck.valid, true);
-    assert.equal(validCheck.discountAmount, 400);
+    assert.equal(validCheck.discountAmount, 23200);
 
     const wrongCustomer = validateVoucherForOrder(
       INITIAL_VOUCHERS,
@@ -223,30 +223,30 @@ describe('Pure JavaScript & Server Store Logic Tests', () => {
     };
 
     const mixedCart = [
-      { productId: 'prod-office-chair', productName: 'Office Chair', unitPrice: 5000, quantity: 1 },
-      { productId: 'prod-office-desk', productName: 'Office Desk', unitPrice: 3000, quantity: 1 },
-      { productId: 'prod-monitor-stand', productName: 'Monitor Stand', unitPrice: 1000, quantity: 1 },
+      { productId: 'prod-office-chair', productName: 'Office Chair', unitPrice: 290000, quantity: 1 },
+      { productId: 'prod-office-desk', productName: 'Office Desk', unitPrice: 174000, quantity: 1 },
+      { productId: 'prod-monitor-stand', productName: 'Monitor Stand', unitPrice: 58000, quantity: 1 },
     ];
 
     const result = calculateOrderPricing(mixedCart, save20Voucher);
-    assert.equal(result.rawSubtotal, 9000);
-    assert.equal(result.eligibleSubtotal, 5000);
-    assert.equal(result.nonEligibleSubtotal, 4000);
-    assert.equal(result.voucherDiscountAmount, 1000);
-    assert.equal(result.subtotal, 8000);
-    assert.equal(result.totalAmount, 8000);
+    assert.equal(result.rawSubtotal, 522000);
+    assert.equal(result.eligibleSubtotal, 290000);
+    assert.equal(result.nonEligibleSubtotal, 232000);
+    assert.equal(result.voucherDiscountAmount, 58000);
+    assert.equal(result.subtotal, 464000);
+    assert.equal(result.totalAmount, 464000);
 
     assert.equal(result.lineBreakdowns[0].isVoucherEligible, true);
-    assert.equal(result.lineBreakdowns[0].lineDiscount, 1000);
-    assert.equal(result.lineBreakdowns[0].finalLineTotal, 4000);
+    assert.equal(result.lineBreakdowns[0].lineDiscount, 58000);
+    assert.equal(result.lineBreakdowns[0].finalLineTotal, 232000);
 
     assert.equal(result.lineBreakdowns[1].isVoucherEligible, false);
     assert.equal(result.lineBreakdowns[1].lineDiscount, 0);
-    assert.equal(result.lineBreakdowns[1].finalLineTotal, 3000);
+    assert.equal(result.lineBreakdowns[1].finalLineTotal, 174000);
 
     assert.equal(result.lineBreakdowns[2].isVoucherEligible, false);
     assert.equal(result.lineBreakdowns[2].lineDiscount, 0);
-    assert.equal(result.lineBreakdowns[2].finalLineTotal, 1000);
+    assert.equal(result.lineBreakdowns[2].finalLineTotal, 58000);
   });
 
   it('validates and builds raw Materials (Material table) for the workshop', () => {
@@ -428,8 +428,8 @@ describe('Pure JavaScript & Server Store Logic Tests', () => {
       image: 'assets/images/category_dining_tables.jpg',
     });
     assert.equal(lowPriceCheck.valid, false);
-    assert.equal(lowPriceCheck.errorMessage, 'Base Price must be at least $50.');
-    assert.equal(formatVoucherBenefitLabel({ discountType: 'fixed', discountAmount: 300 }), '$300 OFF');
+    assert.equal(lowPriceCheck.errorMessage, 'Base Price must be at least ₱2,900.00.');
+    assert.equal(formatVoucherBenefitLabel({ discountType: 'fixed', discountAmount: 17400 }), '₱17,400.00 OFF');
   });
 
   it('removes products from the catalog and cleans up associated cart items and vouchers', () => {
@@ -475,7 +475,7 @@ describe('Pure JavaScript & Server Store Logic Tests', () => {
     assert.equal(display.categoryName, 'Living Room');
     assert.equal(display.image, 'assets/images/category_living_lounge.jpg');
     assert.equal(display.selectedFinish, 'Alabaster Heavy Linen / Smoked Oak');
-    assert.equal(display.effectivePrice, Math.round(5070 * 0.9));
+    assert.equal(display.effectivePrice, Math.round(294060 * 0.9));
     assert.equal(display.availabilityLabel, 'In Stock');
     assert.ok(display.availabilityDetail.includes('available'));
     assert.ok(display.colorVariants.length >= 3);
@@ -701,8 +701,8 @@ describe('Pure JavaScript & Server Store Logic Tests', () => {
     assert.equal(cardData.name, 'Rowena Curved Bouclé Lounge Sofa');
     assert.equal(cardData.categoryName, 'Living Room');
     assert.equal(cardData.hasDiscount, true);
-    assert.equal(cardData.originalPrice, 4850);
-    assert.equal(cardData.sellingPrice, 4365);
+    assert.equal(cardData.originalPrice, 281300);
+    assert.equal(cardData.sellingPrice, 253170);
     assert.equal(cardData.ctaLabel, 'View Product');
     assert.equal('colorVariants' in cardData, false);
     assert.equal('selectedFinish' in cardData, false);
@@ -779,8 +779,8 @@ describe('Pure JavaScript & Server Store Logic Tests', () => {
       {
         customerEmail: 'rowena.vance@vancearchitects.com',
         furnitureId: 'furn-lv-01',
-        code: 'SAVE-99999',
-        discountAmount: 99999,
+        code: 'SAVE-999999',
+        discountAmount: 999999,
         expirationMethod: 'duration',
         durationValue: 24,
         durationUnit: 'hours',
@@ -941,7 +941,7 @@ describe('Pure JavaScript & Server Store Logic Tests', () => {
     const csvContent = buildAnalyticsCsvContent(novReport);
     assert.ok(csvContent.includes('Lillia and Rowena Furniture'));
     assert.ok(csvContent.includes('November 2026'));
-    assert.ok(csvContent.includes('Total Revenue ($)'));
+    assert.ok(csvContent.includes('Total Revenue (₱)'));
     assert.ok(csvContent.includes('ORD-2026-8854'));
 
     const pdfBytes = buildAnalyticsPdfBytes(novReport);
@@ -1019,7 +1019,7 @@ describe('Pure JavaScript & Server Store Logic Tests', () => {
     INITIAL_VOUCHERS.forEach((v) => voucherTable.put(v.code, v));
     const lookedUpVoucher = voucherTable.get('VCH-ROWENA-SOFA400');
     assert.ok(lookedUpVoucher);
-    assert.equal(lookedUpVoucher.discountAmount, 400);
+    assert.equal(lookedUpVoucher.discountAmount, 23200);
     assert.equal(voucherTable.get('NON-EXISTENT-CODE'), null);
   });
 

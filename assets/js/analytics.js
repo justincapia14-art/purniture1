@@ -503,7 +503,11 @@ export function computeMonthlyAnalyticsReport(
   const currentMetrics = computeWindowMetrics(range.startDate, range.endDate);
   const previousMetrics = computeWindowMetrics(range.previousStartDate, range.previousEndDate);
 
-  const formatUsd = (val) => `$${Math.round(Number(val) || 0).toLocaleString('en-US')}`;
+  const formatUsd = (val) =>
+    `₱${(Number.isFinite(Number(val)) ? Number(val) : 0).toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
 
   const buildKpiObj = (key, label, currVal, prevVal, formattedCurr, formattedPrev, subtitle) => {
     const comp = computePercentageChange(currVal, prevVal);
@@ -1422,9 +1426,15 @@ export function buildAnalyticsCsvContent(report) {
   });
   lines.push('');
 
+  const formatPhp = (val) =>
+    `₱${(Number.isFinite(Number(val)) ? Number(val) : 0).toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+
   lines.push('BEST-SELLING PRODUCTS');
   lines.push(
-    ['Rank', 'Product ID', 'Product Name', 'Category', 'Quantity Sold', 'Total Revenue ($)', 'Stock Availability'].join(',')
+    ['Rank', 'Product ID', 'Product Name', 'Category', 'Quantity Sold', 'Total Revenue (₱)', 'Stock Availability'].join(',')
   );
   (report.bestSellingProducts?.allRankedProducts || report.productAnalytics?.allRankedProducts || []).forEach((p) => {
     lines.push(
@@ -1434,7 +1444,7 @@ export function buildAnalyticsCsvContent(report) {
         esc(p.name),
         esc(p.categoryName),
         esc(p.quantitySold),
-        esc(`$${p.totalRevenue}`),
+        esc(formatPhp(p.totalRevenue)),
         esc(`${p.currentStock} (${p.stockStatusLabel})`),
       ].join(',')
     );
@@ -1449,7 +1459,7 @@ export function buildAnalyticsCsvContent(report) {
       'Redeemed',
       'Expired',
       'Revoked',
-      'Total Discount Redeemed ($)',
+      'Total Discount Redeemed (₱)',
       'Redemption Rate (%)',
     ].join(',')
   );
@@ -1461,7 +1471,7 @@ export function buildAnalyticsCsvContent(report) {
       esc(va.redeemedVouchers ?? 0),
       esc(va.expiredVouchers ?? 0),
       esc(va.revokedVouchers ?? 0),
-      esc(`$${va.totalDiscountRedeemed ?? 0}`),
+      esc(formatPhp(va.totalDiscountRedeemed ?? 0)),
       esc(`${va.redemptionRate ?? 0}%`),
     ].join(',')
   );
@@ -1477,8 +1487,8 @@ export function buildAnalyticsCsvContent(report) {
       'Product',
       'Product ID',
       'Qty',
-      'Order Total ($)',
-      'Discount ($)',
+      'Order Total (₱)',
+      'Discount (₱)',
       'Status',
     ].join(',')
   );
@@ -1492,8 +1502,8 @@ export function buildAnalyticsCsvContent(report) {
         esc(ord.furnitureName),
         esc(ord.sku),
         esc(ord.quantity),
-        esc(`$${ord.totalAmount}`),
-        esc(`$${ord.voucherDiscountAmount}`),
+        esc(formatPhp(ord.totalAmount)),
+        esc(formatPhp(ord.voucherDiscountAmount)),
         esc(ord.statusBucket),
       ].join(',')
     );
@@ -1503,9 +1513,15 @@ export function buildAnalyticsCsvContent(report) {
 }
 
 export function buildAnalyticsPdfBytes(report) {
+  const formatPhp = (val) =>
+    `₱${(Number.isFinite(Number(val)) ? Number(val) : 0).toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+
   const safeAscii = (str) =>
     String(str ?? '')
-      .replace(/₱/g, '$')
+      .replace(/₱/g, 'PHP ')
       .replace(/[—–]/g, '-')
       .replace(/×/g, 'x')
       .replace(/[^\x20-\x7E]/g, '')
@@ -1526,14 +1542,14 @@ export function buildAnalyticsPdfBytes(report) {
   lines.push(`2. TOP 5 BEST-SELLING PRODUCTS`);
   (report?.bestSellingProducts?.topFive || report?.productAnalytics?.topFiveProducts || []).forEach((p) => {
     lines.push(
-      `   #${p.rank} [${p.productId}] ${p.name} (${p.categoryName}) - Sold: ${p.quantitySold} pcs | Revenue: $${p.totalRevenue.toLocaleString('en-US')} | Stock: ${p.currentStock}`
+      `   #${p.rank} [${p.productId}] ${p.name} (${p.categoryName}) - Sold: ${p.quantitySold} pcs | Revenue: ${formatPhp(p.totalRevenue)} | Stock: ${p.currentStock}`
     );
   });
   lines.push(`--------------------------------------------------------------------------------`);
   lines.push(`3. ORDER STATUS DISTRIBUTION`);
   (report?.orderAnalytics?.distribution || report?.orderAnalytics?.statusDistribution || []).forEach((s) => {
     lines.push(
-      `   - ${s.label}: ${s.count} order(s) (${s.sharePercent}%) - Total: $${s.totalAmount.toLocaleString('en-US')}`
+      `   - ${s.label}: ${s.count} order(s) (${s.sharePercent}%) - Total: ${formatPhp(s.totalAmount)}`
     );
   });
   lines.push(`--------------------------------------------------------------------------------`);
@@ -1542,7 +1558,7 @@ export function buildAnalyticsPdfBytes(report) {
     `4. VOUCHER ANALYTICS: Issued: ${va.totalVouchersIssued || 0} | Active: ${va.activeVouchers || 0} | Redeemed: ${va.redeemedVouchers || 0} | Expired: ${va.expiredVouchers || 0} | Revoked: ${va.revokedVouchers || 0}`
   );
   lines.push(
-    `   Total Discount Redeemed: $${(va.totalDiscountRedeemed || 0).toLocaleString('en-US')} | Redemption Rate: ${va.redemptionRate || 0}%`
+    `   Total Discount Redeemed: ${formatPhp(va.totalDiscountRedeemed || 0)} | Redemption Rate: ${va.redemptionRate || 0}%`
   );
   lines.push(`--------------------------------------------------------------------------------`);
   const inv = report?.inventoryAnalytics?.currentSnapshot || {};
@@ -1551,13 +1567,13 @@ export function buildAnalyticsPdfBytes(report) {
     `5. INVENTORY ANALYTICS: Available Products: ${inv.totalAvailableProducts || 0} | Low Stock: ${inv.lowStockProductsCount || 0} | Needs Restock: ${inv.materialsRequiringRestockingCount || 0}`
   );
   lines.push(
-    `   Current Combined Inventory Value: $${(inv.currentInventoryValue || 0).toLocaleString('en-US')} | Period Material Consumed Cost: $${(mov.totalMaterialCostConsumed || 0).toLocaleString('en-US')}`
+    `   Current Combined Inventory Value: ${formatPhp(inv.currentInventoryValue || 0)} | Period Material Consumed Cost: ${formatPhp(mov.totalMaterialCostConsumed || 0)}`
   );
   lines.push(`--------------------------------------------------------------------------------`);
   lines.push(`6. PERIOD TRANSACTIONS (${(report?.transactions || report?.periodOrders || []).length} record(s))`);
   (report?.transactions || report?.periodOrders || []).slice(0, 12).forEach((ord) => {
     lines.push(
-      `   ${ord.orderId} | ${ord.orderDate} | ${ord.clientName} | ${ord.sku} (x${ord.quantity}) | $${ord.totalAmount.toLocaleString('en-US')} | ${ord.statusBucket}`
+      `   ${ord.orderId} | ${ord.orderDate} | ${ord.clientName} | ${ord.sku} (x${ord.quantity}) | ${formatPhp(ord.totalAmount)} | ${ord.statusBucket}`
     );
   });
 

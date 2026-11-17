@@ -529,7 +529,7 @@ class AnalyticsReport
             'ok'                  => true,
             'recognitionBasis'    => 'completed_orders',
             'businessName'        => 'Lillia and Rowena Furniture',
-            'currency'            => 'USD ($)',
+            'currency'            => 'PHP (₱)',
             'generatedAt'         => (new \DateTimeImmutable('now', new \DateTimeZone('Asia/Manila')))->format(\DateTimeInterface::ATOM),
             'dateRange'           => $range,
             'summary'             => [

@@ -276,10 +276,10 @@
                   id="catalog-price-slider"
                   data-testid="catalog-price-slider"
                   type="range"
-                  min="1000"
-                  max="5500"
-                  step="100"
-                  value="5500"
+                  min="58000"
+                  max="319000"
+                  step="5800"
+                  value="319000"
                   class="w-full accent-[#0D1015] cursor-pointer"
                 />
                 <div class="flex items-center justify-between gap-3 pt-1">
@@ -291,7 +291,7 @@
                     Filter
                   </button>
                   <p class="text-xs sm:text-sm text-[#475569]">
-                    Price: <strong class="font-mono-tech text-[#0D1015]">$0 — <span id="catalog-price-label">$5,500</span></strong>
+                    Price: <strong class="font-mono-tech text-[#0D1015]">₱0.00 — <span id="catalog-price-label">₱319,000.00</span></strong>
                   </p>
                 </div>
               </div>
@@ -486,7 +486,7 @@
                   </p>
                   <p class="text-xs text-slate-600 mt-0.5">
                     Finish: <strong id="offer-product-finish" class="text-[#0D1015]">Natural Finish</strong> ·
-                    Listed Price: <strong id="offer-product-original-price" class="font-mono-tech text-[#0095FF]">$0</strong>
+                    Listed Price: <strong id="offer-product-original-price" class="font-mono-tech text-[#0095FF]">₱0.00</strong>
                   </p>
                 </div>
               </div>
@@ -505,15 +505,15 @@
 
               <div>
                 <label for="offer-proposed-price" class="block text-xs font-bold text-[#0D1015] mb-1">
-                  Your Proposed Price ($ USD) <span class="text-rose-600">*</span>
+                  Your Proposed Price (₱ PHP) <span class="text-rose-600">*</span>
                 </label>
                 <input
                   id="offer-proposed-price"
                   type="number"
-                  min="25"
+                  min="1450"
                   step="1"
                   required
-                  placeholder="Enter your proposed offer amount (e.g. 2400)"
+                  placeholder="Enter your proposed offer amount (e.g. 139200)"
                   class="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 font-mono-tech text-sm font-bold text-[#0D1015] focus:outline-none focus:border-[#0095FF]"
                 />
               </div>
@@ -695,19 +695,19 @@
             <div class="space-y-1.5 text-xs sm:text-sm">
               <div class="flex justify-between text-slate-600">
                 <span>Items Subtotal</span>
-                <span id="cart-subtotal" class="font-mono-tech font-semibold text-[#0D1015]">$0</span>
+                <span id="cart-subtotal" class="font-mono-tech font-semibold text-[#0D1015]">₱0.00</span>
               </div>
               <div id="cart-voucher-row" class="hidden justify-between text-emerald-700 font-semibold">
                 <span>Voucher Discount</span>
-                <span id="cart-voucher-discount" class="font-mono-tech">-$0</span>
+                <span id="cart-voucher-discount" class="font-mono-tech">-₱0.00</span>
               </div>
               <div class="flex justify-between text-slate-600">
                 <span>White-Glove Delivery &amp; Assembly</span>
-                <span id="cart-delivery" class="font-mono-tech font-semibold text-[#0D1015]">$0</span>
+                <span id="cart-delivery" class="font-mono-tech font-semibold text-[#0D1015]">₱0.00</span>
               </div>
               <div class="flex justify-between text-base font-bold text-[#0D1015] pt-2 border-t border-slate-200">
                 <span>Total</span>
-                <span id="cart-total" class="font-mono-tech text-[#0095FF]">$0</span>
+                <span id="cart-total" class="font-mono-tech text-[#0095FF]">₱0.00</span>
               </div>
             </div>
 

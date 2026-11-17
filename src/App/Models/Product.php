@@ -205,8 +205,8 @@ class Product
         if ($image === '') {
             throw new ValidationException('Product image is required when adding or editing a product.');
         }
-        if ($price < 50.0) {
-            throw new ValidationException('Base Price must be at least $50.');
+        if ($price < 2900.0) {
+            throw new ValidationException('Base Price must be at least ₱2,900.00.');
         }
 
         $isCustomized = ($rawType === 'customized' || $rawType === 'messenger');
@@ -375,16 +375,16 @@ class Product
 
         $discountAmount = round((float) ($input['discountAmount'] ?? $input['discountValue'] ?? 0), 2);
         if ($discountAmount <= 0) {
-            throw new ValidationException('Discount Amount ($) must be greater than $0.');
+            throw new ValidationException('Discount Amount (₱) must be greater than ₱0.00.');
         }
 
         $maxProductPrice = (float) ($matchedProduct['effectivePrice'] ?? $matchedProduct['price'] ?? 0);
         if ($maxProductPrice > 0 && $discountAmount > $maxProductPrice) {
             throw new ValidationException(
                 sprintf(
-                    'Discount Amount ($%s) cannot exceed the eligible product\'s price ($%s for %s).',
-                    number_format($discountAmount, 0),
-                    number_format($maxProductPrice, 0),
+                    'Discount Amount (₱%s) cannot exceed the eligible product\'s price (₱%s for %s).',
+                    number_format($discountAmount, 2, '.', ','),
+                    number_format($maxProductPrice, 2, '.', ','),
                     (string) ($matchedProduct['name'] ?? 'Selected Product')
                 )
             );
@@ -585,7 +585,7 @@ class Product
 
         $discountAmount = (float) ($voucher['discountAmount'] ?? $voucher['discountValue'] ?? 0);
         if ($discountAmount <= 0) {
-            throw new ValidationException('Voucher discount amount must be greater than $0.');
+            throw new ValidationException('Voucher discount amount must be greater than ₱0.00.');
         }
 
         // ALGORITHM B4 + B1: Sort catalog by ID via Insertion Sort and locate target product via Binary Search
@@ -695,7 +695,7 @@ class Product
                 $maxProdPrice = (float) ($eligibleProduct['effectivePrice'] ?? $eligibleProduct['price'] ?? 0);
                 if ($maxProdPrice > 0 && $discountVal > $maxProdPrice) {
                     throw new ValidationException(
-                        'Voucher "' . $normalizedCode . '" discount ($' . $discountVal . ') exceeds the eligible product price ($' . $maxProdPrice . ').'
+                        'Voucher "' . $normalizedCode . '" discount (₱' . number_format($discountVal, 2, '.', ',') . ') exceeds the eligible product price (₱' . number_format($maxProdPrice, 2, '.', ',') . ').'
                     );
                 }
             }
@@ -767,7 +767,7 @@ class Product
         }
 
         $subtotal = max(0.0, $rawSubtotal - $totalDiscount);
-        $deliveryFee = $subtotal === 0.0 ? 0.0 : ($subtotal >= 5000.0 ? 0.0 : 250.0);
+        $deliveryFee = $subtotal === 0.0 ? 0.0 : ($subtotal >= 290000.0 ? 0.0 : 14500.0);
         $totalAmount = $subtotal + $deliveryFee;
 
         return [

@@ -28,7 +28,7 @@ const HERO_TAB_CONTENT = {
     description:
       'Furnish every room with sustainably sourced American walnut, solid white oak, and soft Belgian linen and bouclé upholstery—ready for your home or custom-made to order.',
     priceLabel: 'Pieces Starting At',
-    price: '$1,180',
+    price: '₱68,440.00',
     monthly: 'Flexible monthly payment plans available',
     ctaText: 'Explore Living Room',
     filterTarget: 'living',
@@ -42,7 +42,7 @@ const HERO_TAB_CONTENT = {
     description:
       'Relax in deep-seated sofas upholstered in soft Belgian bouclé, paired with solid white oak lounge frames and natural stone coffee tables built for everyday living.',
     priceLabel: 'Living Room Starting At',
-    price: '$1,680',
+    price: '₱97,440.00',
     monthly: 'Flexible monthly payment plans available',
     ctaText: 'Shop Living & Lounge',
     filterTarget: 'living',
@@ -56,7 +56,7 @@ const HERO_TAB_CONTENT = {
     description:
       'Gather around heirloom dining tables crafted from solid American black walnut and white oak, paired with comfortable woven cord and upholstered dining chairs.',
     priceLabel: 'Dining Room Starting At',
-    price: '$1,290',
+    price: '₱74,820.00',
     monthly: 'Flexible monthly payment plans available',
     ctaText: 'Shop Dining & Tables',
     filterTarget: 'dining',
@@ -70,7 +70,7 @@ const HERO_TAB_CONTENT = {
     description:
       'Create a calm bedroom retreat with upholstered Belgian linen platform beds, solid ash frames, and soft-close bedside tables with spacious storage.',
     priceLabel: 'Bedroom Starting At',
-    price: '$1,180',
+    price: '₱68,440.00',
     monthly: 'Flexible monthly payment plans available',
     ctaText: 'Shop Bedroom Collection',
     filterTarget: 'bedroom',
@@ -84,7 +84,7 @@ const HERO_TAB_CONTENT = {
     description:
       'Organize your workspace and living areas with solid walnut writing desks, concealed cable management, and handcrafted fluted wood sideboards.',
     priceLabel: 'Study & Storage Starting At',
-    price: '$2,150',
+    price: '₱124,700.00',
     monthly: 'Flexible monthly payment plans available',
     ctaText: 'Shop Study & Storage',
     filterTarget: 'office',
@@ -117,7 +117,7 @@ const state = {
   sortBy: 'featured',
   catalogPageCategory: 'all',
   catalogPageColorKey: 'all',
-  catalogPageMaxPrice: 5500,
+  catalogPageMaxPrice: 319000,
   catalogPageSpotlightProductId: '',
   catalogPageSearchQuery: '',
   cartItems: [],
@@ -229,7 +229,9 @@ function esc(value) {
 }
 
 function usd(amount) {
-  return '$' + Math.round(Number(amount || 0)).toLocaleString('en-US');
+  const num = Number(amount || 0);
+  const safe = Number.isFinite(num) ? num : 0;
+  return '₱' + safe.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function bindLiveSearchInput(inputId, stateKey, onRender) {
@@ -1382,7 +1384,7 @@ async function openMakeOfferModal(productId) {
   if (origPriceEl) origPriceEl.textContent = usd(display.effectivePrice);
   if (nameInput) nameInput.value = `${display.name} (${display.selectedFinish})`;
 
-  const suggestedOffer = Math.max(50, Math.round(display.effectivePrice * 0.9));
+  const suggestedOffer = Math.max(2900, Math.round(display.effectivePrice * 0.9));
   if (proposedInput) proposedInput.value = String(suggestedOffer);
   if (customInput) customInput.value = '';
   if (notesInput) notesInput.value = '';
@@ -2029,7 +2031,7 @@ function initCatalogPage() {
   state.catalogPageColorKey = paramColor;
   state.catalogPageSpotlightProductId = paramProduct;
   state.catalogPageSearchQuery = paramQuery;
-  state.catalogPageMaxPrice = 5500;
+  state.catalogPageMaxPrice = 319000;
 
   if (paramProduct && !params.has('category')) {
     const matchedProd = state.catalog.find((p) => p.id === paramProduct);
@@ -2098,7 +2100,7 @@ function initCatalogPage() {
 
   if (priceSlider) {
     priceSlider.addEventListener('input', (e) => {
-      const val = Number(e.target.value || 5500);
+      const val = Number(e.target.value || 319000);
       if (priceDisplay) {
         priceDisplay.textContent = usd(val);
       }
@@ -2108,7 +2110,7 @@ function initCatalogPage() {
   }
   if (priceApplyBtn && priceSlider) {
     priceApplyBtn.addEventListener('click', () => {
-      state.catalogPageMaxPrice = Number(priceSlider.value || 5500);
+      state.catalogPageMaxPrice = Number(priceSlider.value || 319000);
       renderCatalogPage();
     });
   }
@@ -2129,11 +2131,11 @@ function initCatalogPage() {
     resetAllBtn.addEventListener('click', () => {
       state.catalogPageCategory = 'all';
       state.catalogPageColorKey = 'all';
-      state.catalogPageMaxPrice = 5500;
+      state.catalogPageMaxPrice = 319000;
       state.catalogPageSpotlightProductId = '';
       state.catalogPageSearchQuery = '';
-      if (priceSlider) priceSlider.value = '5500';
-      if (priceDisplay) priceDisplay.textContent = '$5,500';
+      if (priceSlider) priceSlider.value = '319000';
+      if (priceDisplay) priceDisplay.textContent = '₱319,000.00';
       if (topSearch) topSearch.value = '';
       syncClear('');
       syncCatalogUrlParams();
@@ -2155,7 +2157,7 @@ function renderCatalogPage() {
 
   const activeCatId = state.catalogPageCategory || 'all';
   const activeColorKey = state.catalogPageColorKey || 'all';
-  const maxPrice = state.catalogPageMaxPrice || 5500;
+  const maxPrice = state.catalogPageMaxPrice || 319000;
   const searchQuery = state.catalogPageSearchQuery || '';
 
   // 1. Update Top Horizontal Category Bar active state
@@ -2200,7 +2202,7 @@ function renderCatalogPage() {
   }
 
   const hasAnyFilter =
-    activeCatId !== 'all' || activeColorKey !== 'all' || maxPrice < 5500 || Boolean(searchQuery.trim());
+    activeCatId !== 'all' || activeColorKey !== 'all' || maxPrice < 319000 || Boolean(searchQuery.trim());
   if (activeFilterBar && activeFilterSummary) {
     activeFilterBar.classList.toggle('hidden', !hasAnyFilter);
     activeFilterBar.classList.toggle('flex', hasAnyFilter);
@@ -2216,7 +2218,7 @@ function renderCatalogPage() {
     </span>
       `);
     }
-    if (maxPrice < 5500) {
+    if (maxPrice < 319000) {
       pills.push(`<span class="px-2.5 py-1 rounded-md bg-white border border-[#BCE3FF] font-semibold">Max Price: ${usd(maxPrice)}</span>`);
     }
     if (searchQuery.trim()) {
@@ -2455,7 +2457,7 @@ function renderCatalogPage() {
       emptyResetBtn.addEventListener('click', () => {
         state.catalogPageCategory = 'all';
         state.catalogPageColorKey = 'all';
-        state.catalogPageMaxPrice = 5500;
+        state.catalogPageMaxPrice = 319000;
         syncCatalogUrlParams();
         renderCatalogPage();
       });

@@ -800,13 +800,13 @@ function initDashboardPage() {
     if (nameEl) nameEl.value = '';
     if (catEl) catEl.value = 'living';
     if (skuEl) skuEl.value = generateOwnEntityId('product', '', catEl ? catEl.value : 'living').codeId;
-    if (priceEl) priceEl.value = '2850';
+    if (priceEl) priceEl.value = '165300';
     if (discEl) discEl.value = '0';
     if (dimEl) dimEl.value = '240cm L × 100cm W × 75cm H';
     if (stockEl) stockEl.value = '4';
     if (minStockEl) minStockEl.value = '2';
     if (colEl) {
-      colEl.value = 'Natural Walnut|#5C3A21|0, Smoked Oak|#3D312A|180, Ebonized Ash|#1C1917|260';
+      colEl.value = 'Natural Walnut|#5C3A21|0, Smoked Oak|#3D312A|10440, Ebonized Ash|#1C1917|15080';
     }
     if (prodImageInput) prodImageInput.value = 'assets/images/category_dining_tables.jpg';
     if (prodImageFileInput) prodImageFileInput.value = '';
@@ -839,7 +839,7 @@ function initDashboardPage() {
     if (nameEl) nameEl.value = product.name || '';
     if (skuEl) skuEl.value = product.sku || '';
     if (catEl) catEl.value = product.categoryId || 'dining';
-    if (priceEl) priceEl.value = String(product.price || 2850);
+    if (priceEl) priceEl.value = String(product.price || 165300);
     if (discEl) discEl.value = String(product.discountPercent || 0);
     if (dimEl) dimEl.value = product.dimensions || 'Standard Dimensions';
     if (stockEl) stockEl.value = String(product.inStockCount ?? 4);
@@ -1270,7 +1270,7 @@ function initDashboardPage() {
   const genVoucherBtn = document.getElementById('admin-generate-voucher-btn');
   if (genVoucherBtn) {
     genVoucherBtn.addEventListener('click', () => {
-      const discountVal = Math.max(1, Math.round(Number(document.getElementById('vch-discount')?.value) || 300));
+      const discountVal = Math.max(1, Math.round(Number(document.getElementById('vch-discount')?.value) || 17400));
       const randomDigits = Math.floor(100 + Math.random() * 900);
       const codeInput = document.getElementById('vch-code');
       if (codeInput) {
@@ -1714,9 +1714,9 @@ function renderDashboardContent() {
         availableMaterials.find((m) => m.id === state.clientCustomOrderInput.materialId) ||
         availableMaterials[0] ||
         state.materials[0];
-      const basePrice = Number(selectedBaseProd?.effectivePrice || selectedBaseProd?.price || 2850);
+      const basePrice = Number(selectedBaseProd?.effectivePrice || selectedBaseProd?.price || 165300);
       const matUnitCost = Number(selectedMat?.unitCost || 0);
-      const extraCost = Math.max(250, Math.round(matUnitCost * 4));
+      const extraCost = Math.max(14500, Math.round(matUnitCost * 4));
       const estimatedTotal = basePrice + extraCost;
 
       customOrderCardEl.innerHTML = `
@@ -3591,14 +3591,14 @@ function renderDashboardContent() {
                 activeMovementMode === 'Stock In'
                   ? `
                 <div>
-                  <label for="inv-move-cost" class="admin-label">Total Purchase Cost ($ USD, Optional)</label>
+                  <label for="inv-move-cost" class="admin-label">Total Purchase Cost (₱ PHP, Optional)</label>
                   <input
                     id="inv-move-cost"
                     type="number"
                     min="0"
                     step="0.01"
                     value="${esc(state.adminMovementPurchaseCost)}"
-                    placeholder="e.g. 420.00"
+                    placeholder="e.g. 24360.00"
                     class="admin-input font-mono-tech"
                   />
                 </div>
@@ -3763,14 +3763,14 @@ function renderDashboardContent() {
                   />
                 </div>
                 <div>
-                  <label for="mat-cost" class="admin-label">Unit Cost ($ USD)</label>
+                  <label for="mat-cost" class="admin-label">Unit Cost (₱ PHP)</label>
                   <input
                     id="mat-cost"
                     type="number"
                     min="0"
                     step="0.01"
                     required
-                    value="${esc(editingMaterial ? String(editingMaterial.unitCost) : '18.50')}"
+                    value="${esc(editingMaterial ? String(editingMaterial.unitCost) : '1073.00')}"
                     class="admin-input font-mono-tech"
                   />
                 </div>
@@ -5278,7 +5278,7 @@ function renderAdminAnalyticsSection() {
       const val = Math.round(maxDailyRev * pct);
       return `
         <line x1="${padL}" y1="${y}" x2="${svgW - padR}" y2="${y}" stroke="#E2E8F0" stroke-dasharray="3 3" />
-        <text x="${padL - 6}" y="${y + 4}" text-anchor="end" fill="#64748B" font-size="10" font-family="monospace">$${val >= 1000 ? (val / 1000).toFixed(1) + 'k' : val}</text>
+        <text x="${padL - 6}" y="${y + 4}" text-anchor="end" fill="#64748B" font-size="10" font-family="monospace">₱${val >= 1000 ? (val / 1000).toFixed(1) + 'k' : val}</text>
       `;
     });
 
@@ -6030,7 +6030,7 @@ function renderAdminAnalyticsSection() {
             </svg>
             <span>How metrics are calculated</span>
           </div>
-          <span>Realized revenue · Asia/Manila (USD $)</span>
+          <span>Realized revenue · Asia/Manila (PHP ₱)</span>
         </div>
       </section>
 
@@ -6055,7 +6055,7 @@ function renderAdminAnalyticsSection() {
             <div class="flex items-start justify-between gap-2">
               <div>
                 <h4 class="text-sm font-bold text-slate-900">Daily Revenue Throughout Selected Period</h4>
-                <p class="text-xs text-slate-500">${esc(report.period.label)} · Realized daily revenue in US Dollars ($)</p>
+                <p class="text-xs text-slate-500">${esc(report.period.label)} · Realized daily revenue in Philippine Pesos (₱)</p>
               </div>
               <span class="font-mono-tech text-sm font-bold text-[#0095FF]">${usd(s.totalRevenue.value)}</span>
             </div>
@@ -6098,7 +6098,7 @@ function renderAdminAnalyticsSection() {
                   return `
                     <div class="flex flex-col items-center justify-end h-full group">
                       <span class="font-mono-tech text-[9px] font-bold ${hasRev ? 'text-slate-700' : 'text-slate-300'} mb-1">
-                        ${hasRev ? '$' + (m.revenue >= 1000 ? (m.revenue / 1000).toFixed(1) + 'k' : m.revenue) : '0'}
+                        ${hasRev ? '₱' + (m.revenue >= 1000 ? (m.revenue / 1000).toFixed(1) + 'k' : m.revenue) : '0'}
                       </span>
                       <div
                         class="w-full max-w-[28px] rounded-t-md transition-all ${
@@ -6616,7 +6616,7 @@ function renderAdminAnalyticsSection() {
         <div class="px-6 py-4 border-b border-slate-200 bg-slate-50/70 flex flex-wrap items-center justify-between gap-2">
           <div>
             <h3 class="text-sm font-bold text-slate-900">Fixed-Amount Voucher Analytics (${esc(report.period.label)})</h3>
-            <p class="text-xs text-slate-500">Issuance, live expiration status, redemption rate, and fixed-amount Dollar ($) discounts redeemed</p>
+            <p class="text-xs text-slate-500">Issuance, live expiration status, redemption rate, and fixed-amount Peso (₱) discounts redeemed</p>
           </div>
           <span class="px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-800 border border-indigo-200 font-mono-tech text-xs font-bold">
             Redemption Rate: ${vchAnalytics.redemptionRate.toFixed(1)}%
@@ -6768,7 +6768,7 @@ function renderAdminAnalyticsSection() {
                         <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 font-mono-tech text-[11px] font-bold">${esc(t.normalizedStatus)}</span>
                       </td>
                       <td class="font-mono-tech text-xs text-slate-600 whitespace-nowrap">${esc(t.paymentStatus)}</td>
-                      <td class="font-mono-tech text-xs text-indigo-600 whitespace-nowrap">${t.discountAmount > 0 ? '-' + usd(t.discountAmount) : '$0'}</td>
+                      <td class="font-mono-tech text-xs text-indigo-600 whitespace-nowrap">${t.discountAmount > 0 ? '-' + usd(t.discountAmount) : '₱0.00'}</td>
                       <td class="text-right font-mono-tech text-xs font-bold ${t.realizedRevenue > 0 ? 'text-emerald-700' : 'text-slate-400'} whitespace-nowrap">
                         ${usd(t.realizedRevenue)}
                       </td>
