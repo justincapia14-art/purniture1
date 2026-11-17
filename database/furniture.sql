@@ -1,7 +1,21 @@
 -- =====================================================================
--- Lillia and Rowena Furniture — MySQL / MariaDB (XAMPP phpMyAdmin) Schema & Seed
--- Automatically creates and selects the `lillia_rowena_furniture` database
--- so you can import or run this file directly in phpMyAdmin.
+-- Lillia and Rowena Furniture — Final Optimized 3NF MySQL / MariaDB Schema & Seed
+-- Database: `lillia_rowena_furniture` (InnoDB, utf8mb4_unicode_ci)
+-- Pre-Optimization Backup: `database/backup_before_optimization.sql`
+--
+-- Active Entities (12 Normalized 3NF Tables — Non-Incrementing Code IDs):
+--   1. Admin                 (AdminID PK, Email UNIQUE, PasswordHash)
+--   2. Category              (CategoryID PK, CategoryName UNIQUE, Description)
+--   3. Customer              (CustomerID PK, FullName, Email UNIQUE, PasswordHash, PhoneNumber, Address)
+--   4. Product               (ProductID PK, CategoryID FK, ProductName, BasePrice)
+--   5. Material              (MaterialID PK, MaterialName, MaterialType, Unit, UnitCost, StockQuantity)
+--   6. Voucher               (VoucherID PK, CustomerID FK, ProductID FK, AdminID FK, Code UNIQUE, DiscountValue, ExpiresAt, Status, IssuedAt)
+--   7. Customer_Order        (OrderID PK, CustomerID FK, OrderDate, CompletedAt, Status)
+--   8. Order_Item            (OrderItemID PK, OrderID FK, ProductID FK, VoucherID FK UNIQUE, ItemType, Quantity, UnitPrice)
+--   9. Order_Item_Material   (OrderItemID PK/FK, MaterialID PK/FK, QuantityUsed)
+--  10. Customization         (CustomizationID PK, OrderItemID FK UNIQUE, Length, Width, Height, ColorFinish, Notes, ExtraCost)
+--  11. Payment               (PaymentID PK, OrderID FK, PaymentDate, Amount)
+--  12. Production_Task       (TaskID PK, OrderItemID FK, StartDate, TaskStatus)
 -- =====================================================================
 
 CREATE DATABASE IF NOT EXISTS `lillia_rowena_furniture`
@@ -17,6 +31,12 @@ DROP TRIGGER IF EXISTS `trg_order_item_bu`;
 DROP PROCEDURE IF EXISTS `check_voucher_use`;
 DROP PROCEDURE IF EXISTS `sp_record_stock_movement`;
 
+-- Drop unused legacy entities if present from earlier drafts
+DROP TABLE IF EXISTS `Delivery`;
+DROP TABLE IF EXISTS `Employee`;
+DROP TABLE IF EXISTS `Supplier`;
+
+-- Recreate active 12 tables cleanly
 DROP TABLE IF EXISTS `Production_Task`;
 DROP TABLE IF EXISTS `Payment`;
 DROP TABLE IF EXISTS `Customization`;
@@ -32,134 +52,215 @@ DROP TABLE IF EXISTS `Admin`;
 
 SET FOREIGN_KEY_CHECKS = 1;
 
--- ---------- 1. Independent tables (Non-Incrementing Code IDs) ----------
+-- =============================================================================
+-- 1. INDEPENDENT ENTITIES (3NF — Non-Incrementing Code Primary Keys)
+-- =============================================================================
 
 CREATE TABLE `Admin` (
-    `AdminID`       VARCHAR(50) NOT NULL PRIMARY KEY,
-    `Email`         VARCHAR(255) NOT NULL UNIQUE,
-    `PasswordHash`  VARCHAR(255) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `AdminID`       VARCHAR(50)  NOT NULL,
+    `Email`         VARCHAR(255) NOT NULL,
+    `PasswordHash`  VARCHAR(255) NOT NULL,
+    CONSTRAINT `pk_admin` PRIMARY KEY (`AdminID`),
+    CONSTRAINT `uq_admin_email` UNIQUE (`Email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `Category` (
-    `CategoryID`    VARCHAR(50) NOT NULL PRIMARY KEY,
-    `CategoryName`  VARCHAR(100) NOT NULL UNIQUE,
-    `Description`   TEXT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `CategoryID`    VARCHAR(50)  NOT NULL,
+    `CategoryName`  VARCHAR(100) NOT NULL,
+    `Description`   VARCHAR(255) DEFAULT NULL,
+    CONSTRAINT `pk_category` PRIMARY KEY (`CategoryID`),
+    CONSTRAINT `uq_category_name` UNIQUE (`CategoryName`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `Customer` (
-    `CustomerID`    VARCHAR(50) NOT NULL PRIMARY KEY,
+    `CustomerID`    VARCHAR(50)  NOT NULL,
     `FullName`      VARCHAR(150) NOT NULL,
-    `Email`         VARCHAR(255) NOT NULL UNIQUE,
+    `Email`         VARCHAR(255) NOT NULL,
     `PasswordHash`  VARCHAR(255) NOT NULL,
-    `PhoneNumber`   VARCHAR(30),
-    `Address`       VARCHAR(255)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `PhoneNumber`   VARCHAR(30)  DEFAULT NULL,
+    `Address`       VARCHAR(255) DEFAULT NULL,
+    CONSTRAINT `pk_customer` PRIMARY KEY (`CustomerID`),
+    CONSTRAINT `uq_customer_email` UNIQUE (`Email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ---------- 2. Catalog & Workshop Inventory ----------
+-- =============================================================================
+-- 2. CATALOG & WORKSHOP INVENTORY ENTITIES
+-- =============================================================================
 
 CREATE TABLE `Product` (
-    `ProductID`    VARCHAR(50) NOT NULL PRIMARY KEY,
-    `CategoryID`   VARCHAR(50) NOT NULL,
-    `ProductName`  VARCHAR(150) NOT NULL,
-    `BasePrice`    DECIMAL(10,2) NOT NULL CHECK (`BasePrice` >= 0),
-    FOREIGN KEY (`CategoryID`) REFERENCES `Category`(`CategoryID`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `ProductID`    VARCHAR(50)    NOT NULL,
+    `CategoryID`   VARCHAR(50)    NOT NULL,
+    `ProductName`  VARCHAR(150)   NOT NULL,
+    `BasePrice`    DECIMAL(10,2)  NOT NULL,
+    CONSTRAINT `pk_product` PRIMARY KEY (`ProductID`),
+    CONSTRAINT `chk_product_base_price` CHECK (`BasePrice` >= 0),
+    INDEX `idx_product_category` (`CategoryID`),
+    INDEX `idx_product_name` (`ProductName`),
+    CONSTRAINT `fk_product_category`
+        FOREIGN KEY (`CategoryID`) REFERENCES `Category`(`CategoryID`)
+        ON UPDATE CASCADE ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `Material` (
-    `MaterialID`     VARCHAR(50) NOT NULL PRIMARY KEY,
-    `MaterialName`   VARCHAR(150) NOT NULL,
-    `MaterialType`   VARCHAR(100),
-    `Unit`           VARCHAR(20) NOT NULL,
-    `UnitCost`       DECIMAL(10,2) NOT NULL CHECK (`UnitCost` >= 0),
-    `StockQuantity`  DECIMAL(12,2) NOT NULL DEFAULT 0 CHECK (`StockQuantity` >= 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `MaterialID`     VARCHAR(50)    NOT NULL,
+    `MaterialName`   VARCHAR(150)   NOT NULL,
+    `MaterialType`   VARCHAR(100)   NOT NULL DEFAULT 'Solid Timber',
+    `Unit`           VARCHAR(20)    NOT NULL,
+    `UnitCost`       DECIMAL(10,2)  NOT NULL,
+    `StockQuantity`  DECIMAL(12,2)  NOT NULL DEFAULT 0.00,
+    CONSTRAINT `pk_material` PRIMARY KEY (`MaterialID`),
+    CONSTRAINT `chk_material_unit_cost` CHECK (`UnitCost` >= 0),
+    CONSTRAINT `chk_material_stock_qty` CHECK (`StockQuantity` >= 0),
+    INDEX `idx_material_type` (`MaterialType`),
+    INDEX `idx_material_name` (`MaterialName`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ---------- 3. Voucher (issued by an admin to ONE customer for ONE product) ----------
+-- =============================================================================
+-- 3. VOUCHER ENTITY (Issued by an Admin to ONE Customer for ONE Product)
+--    Note: Redundant `ExpiryDate` removed; `ExpiresAt` (DATETIME) is authoritative.
+-- =============================================================================
 
 CREATE TABLE `Voucher` (
-    `VoucherID`      VARCHAR(50) NOT NULL PRIMARY KEY,
-    `CustomerID`     VARCHAR(50) NOT NULL,
-    `ProductID`      VARCHAR(50) NOT NULL,
-    `AdminID`        VARCHAR(50) NOT NULL,
-    `Code`           VARCHAR(50) NOT NULL UNIQUE,
-    `DiscountValue`  DECIMAL(10,2) NOT NULL CHECK (`DiscountValue` > 0),
-    `ExpiryDate`     DATE DEFAULT NULL,
-    `ExpiresAt`      DATETIME DEFAULT NULL,
-    `Status`         VARCHAR(20) NOT NULL DEFAULT 'Active'
-                     CHECK (`Status` IN ('Active','Expiring Soon','Used','Expired','Revoked','Cancelled')),
-    `IssuedAt`       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (`VoucherID`, `ProductID`),
-    FOREIGN KEY (`CustomerID`) REFERENCES `Customer`(`CustomerID`),
-    FOREIGN KEY (`ProductID`)  REFERENCES `Product`(`ProductID`),
-    FOREIGN KEY (`AdminID`)    REFERENCES `Admin`(`AdminID`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `VoucherID`      VARCHAR(50)    NOT NULL,
+    `CustomerID`     VARCHAR(50)    NOT NULL,
+    `ProductID`      VARCHAR(50)    NOT NULL,
+    `AdminID`        VARCHAR(50)    NOT NULL,
+    `Code`           VARCHAR(50)    NOT NULL,
+    `DiscountValue`  DECIMAL(10,2)  NOT NULL,
+    `ExpiresAt`      DATETIME       DEFAULT NULL,
+    `Status`         VARCHAR(20)    NOT NULL DEFAULT 'Active',
+    `IssuedAt`       TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT `pk_voucher` PRIMARY KEY (`VoucherID`),
+    CONSTRAINT `uq_voucher_code` UNIQUE (`Code`),
+    CONSTRAINT `uq_voucher_product_pair` UNIQUE (`VoucherID`, `ProductID`),
+    CONSTRAINT `chk_voucher_discount` CHECK (`DiscountValue` > 0),
+    CONSTRAINT `chk_voucher_status`
+        CHECK (`Status` IN ('Active','Expiring Soon','Used','Expired','Revoked','Cancelled')),
+    INDEX `idx_voucher_customer` (`CustomerID`),
+    INDEX `idx_voucher_product` (`ProductID`),
+    INDEX `idx_voucher_admin` (`AdminID`),
+    INDEX `idx_voucher_status` (`Status`),
+    CONSTRAINT `fk_voucher_customer`
+        FOREIGN KEY (`CustomerID`) REFERENCES `Customer`(`CustomerID`)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT `fk_voucher_product`
+        FOREIGN KEY (`ProductID`) REFERENCES `Product`(`ProductID`)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT `fk_voucher_admin`
+        FOREIGN KEY (`AdminID`) REFERENCES `Admin`(`AdminID`)
+        ON UPDATE CASCADE ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ---------- 4. Orders, Items, Customizations, Payments & Tasks ----------
+-- =============================================================================
+-- 4. ORDERS, LINE ITEMS, MATERIALS, CUSTOMIZATIONS, PAYMENTS & TASKS
+-- =============================================================================
 
 CREATE TABLE `Customer_Order` (
-    `OrderID`     VARCHAR(50) NOT NULL PRIMARY KEY,
-    `CustomerID`  VARCHAR(50) NOT NULL,
-    `OrderDate`   DATE NOT NULL,
-    `CompletedAt` DATE DEFAULT NULL,
-    `Status`      VARCHAR(20) NOT NULL DEFAULT 'Pending'
-                  CHECK (`Status` IN ('Pending','InProduction','Ready','Delivered','Cancelled')),
-    FOREIGN KEY (`CustomerID`) REFERENCES `Customer`(`CustomerID`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `OrderID`      VARCHAR(50)  NOT NULL,
+    `CustomerID`   VARCHAR(50)  NOT NULL,
+    `OrderDate`    DATE         NOT NULL,
+    `CompletedAt`  DATE         DEFAULT NULL,
+    `Status`       VARCHAR(20)  NOT NULL DEFAULT 'Pending',
+    CONSTRAINT `pk_customer_order` PRIMARY KEY (`OrderID`),
+    CONSTRAINT `chk_customer_order_status`
+        CHECK (`Status` IN ('Pending','InProduction','Ready','Delivered','Cancelled')),
+    INDEX `idx_order_customer` (`CustomerID`),
+    INDEX `idx_order_status_completed` (`Status`, `CompletedAt`, `OrderDate`),
+    CONSTRAINT `fk_order_customer`
+        FOREIGN KEY (`CustomerID`) REFERENCES `Customer`(`CustomerID`)
+        ON UPDATE CASCADE ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `Order_Item` (
-    `OrderItemID`  VARCHAR(50) NOT NULL PRIMARY KEY,
-    `OrderID`      VARCHAR(50) NOT NULL,
-    `ProductID`    VARCHAR(50) NOT NULL,
-    `VoucherID`    VARCHAR(50) UNIQUE DEFAULT NULL,
-    `ItemType`     VARCHAR(20) NOT NULL DEFAULT 'Standard'
-                   CHECK (`ItemType` IN ('Standard','Custom')),
-    `Quantity`     INT NOT NULL DEFAULT 1 CHECK (`Quantity` > 0),
-    `UnitPrice`    DECIMAL(10,2) NOT NULL CHECK (`UnitPrice` >= 0),
-    FOREIGN KEY (`OrderID`)   REFERENCES `Customer_Order`(`OrderID`) ON DELETE CASCADE,
-    FOREIGN KEY (`ProductID`) REFERENCES `Product`(`ProductID`),
-    FOREIGN KEY (`VoucherID`, `ProductID`) REFERENCES `Voucher`(`VoucherID`, `ProductID`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `OrderItemID`  VARCHAR(50)    NOT NULL,
+    `OrderID`      VARCHAR(50)    NOT NULL,
+    `ProductID`    VARCHAR(50)    NOT NULL,
+    `VoucherID`    VARCHAR(50)    DEFAULT NULL,
+    `ItemType`     VARCHAR(20)    NOT NULL DEFAULT 'Standard',
+    `Quantity`     INT            NOT NULL DEFAULT 1,
+    `UnitPrice`    DECIMAL(10,2)  NOT NULL,
+    CONSTRAINT `pk_order_item` PRIMARY KEY (`OrderItemID`),
+    CONSTRAINT `uq_order_item_voucher` UNIQUE (`VoucherID`),
+    CONSTRAINT `chk_order_item_type` CHECK (`ItemType` IN ('Standard','Custom')),
+    CONSTRAINT `chk_order_item_qty` CHECK (`Quantity` > 0),
+    CONSTRAINT `chk_order_item_price` CHECK (`UnitPrice` >= 0),
+    INDEX `idx_order_item_order` (`OrderID`),
+    INDEX `idx_order_item_product` (`ProductID`),
+    CONSTRAINT `fk_order_item_order`
+        FOREIGN KEY (`OrderID`) REFERENCES `Customer_Order`(`OrderID`)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT `fk_order_item_product`
+        FOREIGN KEY (`ProductID`) REFERENCES `Product`(`ProductID`)
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT `fk_order_item_voucher_product`
+        FOREIGN KEY (`VoucherID`, `ProductID`) REFERENCES `Voucher`(`VoucherID`, `ProductID`)
+        ON UPDATE CASCADE ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `Order_Item_Material` (
-    `OrderItemID`   VARCHAR(50) NOT NULL,
-    `MaterialID`    VARCHAR(50) NOT NULL,
-    `QuantityUsed`  DECIMAL(12,2) NOT NULL CHECK (`QuantityUsed` > 0),
-    PRIMARY KEY (`OrderItemID`, `MaterialID`),
-    FOREIGN KEY (`OrderItemID`) REFERENCES `Order_Item`(`OrderItemID`) ON DELETE CASCADE,
-    FOREIGN KEY (`MaterialID`)  REFERENCES `Material`(`MaterialID`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `OrderItemID`   VARCHAR(50)    NOT NULL,
+    `MaterialID`    VARCHAR(50)    NOT NULL,
+    `QuantityUsed`  DECIMAL(12,2)  NOT NULL,
+    CONSTRAINT `pk_order_item_material` PRIMARY KEY (`OrderItemID`, `MaterialID`),
+    CONSTRAINT `chk_oim_quantity_used` CHECK (`QuantityUsed` > 0),
+    INDEX `idx_oim_material` (`MaterialID`),
+    CONSTRAINT `fk_oim_order_item`
+        FOREIGN KEY (`OrderItemID`) REFERENCES `Order_Item`(`OrderItemID`)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT `fk_oim_material`
+        FOREIGN KEY (`MaterialID`) REFERENCES `Material`(`MaterialID`)
+        ON UPDATE CASCADE ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Note: Redundant `MaterialID` removed from `Customization` because `Order_Item_Material`
+-- already models the N:M material allocation per `OrderItemID`.
 CREATE TABLE `Customization` (
-    `CustomizationID`  VARCHAR(50) NOT NULL PRIMARY KEY,
-    `OrderItemID`      VARCHAR(50) NOT NULL UNIQUE,
-    `MaterialID`       VARCHAR(50) DEFAULT NULL,
-    `Length`           DECIMAL(8,2) DEFAULT NULL,
-    `Width`            DECIMAL(8,2) DEFAULT NULL,
-    `Height`           DECIMAL(8,2) DEFAULT NULL,
-    `ColorFinish`      VARCHAR(100) DEFAULT NULL,
-    `Notes`            TEXT DEFAULT NULL,
-    `ExtraCost`        DECIMAL(10,2) NOT NULL DEFAULT 0 CHECK (`ExtraCost` >= 0),
-    FOREIGN KEY (`OrderItemID`) REFERENCES `Order_Item`(`OrderItemID`) ON DELETE CASCADE,
-    FOREIGN KEY (`MaterialID`)  REFERENCES `Material`(`MaterialID`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `CustomizationID`  VARCHAR(50)    NOT NULL,
+    `OrderItemID`      VARCHAR(50)    NOT NULL,
+    `Length`           DECIMAL(8,2)   DEFAULT NULL,
+    `Width`            DECIMAL(8,2)   DEFAULT NULL,
+    `Height`           DECIMAL(8,2)   DEFAULT NULL,
+    `ColorFinish`      VARCHAR(100)   DEFAULT NULL,
+    `Notes`            VARCHAR(255)   DEFAULT NULL,
+    `ExtraCost`        DECIMAL(10,2)  NOT NULL DEFAULT 0.00,
+    CONSTRAINT `pk_customization` PRIMARY KEY (`CustomizationID`),
+    CONSTRAINT `uq_customization_order_item` UNIQUE (`OrderItemID`),
+    CONSTRAINT `chk_customization_extra_cost` CHECK (`ExtraCost` >= 0),
+    CONSTRAINT `fk_customization_order_item`
+        FOREIGN KEY (`OrderItemID`) REFERENCES `Order_Item`(`OrderItemID`)
+        ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `Payment` (
-    `PaymentID`    VARCHAR(50) NOT NULL PRIMARY KEY,
-    `OrderID`      VARCHAR(50) NOT NULL,
-    `PaymentDate`  DATE NOT NULL,
-    `Amount`       DECIMAL(10,2) NOT NULL CHECK (`Amount` > 0),
-    FOREIGN KEY (`OrderID`) REFERENCES `Customer_Order`(`OrderID`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `PaymentID`    VARCHAR(50)    NOT NULL,
+    `OrderID`      VARCHAR(50)    NOT NULL,
+    `PaymentDate`  DATE           NOT NULL,
+    `Amount`       DECIMAL(10,2)  NOT NULL,
+    CONSTRAINT `pk_payment` PRIMARY KEY (`PaymentID`),
+    CONSTRAINT `chk_payment_amount` CHECK (`Amount` > 0),
+    INDEX `idx_payment_order` (`OrderID`),
+    INDEX `idx_payment_date` (`PaymentDate`),
+    CONSTRAINT `fk_payment_order`
+        FOREIGN KEY (`OrderID`) REFERENCES `Customer_Order`(`OrderID`)
+        ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Note: Unused `EndDate` removed from `Production_Task` because order completion date
+-- is tracked authoritatively on `Customer_Order.CompletedAt`.
 CREATE TABLE `Production_Task` (
-    `TaskID`       VARCHAR(50) NOT NULL PRIMARY KEY,
-    `OrderItemID`  VARCHAR(50) NOT NULL,
-    `StartDate`    DATE DEFAULT NULL,
-    `EndDate`      DATE DEFAULT NULL,
-    `TaskStatus`   VARCHAR(20) NOT NULL DEFAULT 'Todo'
-                   CHECK (`TaskStatus` IN ('Todo','InProgress','Done','Blocked')),
-    FOREIGN KEY (`OrderItemID`) REFERENCES `Order_Item`(`OrderItemID`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `TaskID`       VARCHAR(50)  NOT NULL,
+    `OrderItemID`  VARCHAR(50)  NOT NULL,
+    `StartDate`    DATE         DEFAULT NULL,
+    `TaskStatus`   VARCHAR(20)  NOT NULL DEFAULT 'Todo',
+    CONSTRAINT `pk_production_task` PRIMARY KEY (`TaskID`),
+    CONSTRAINT `chk_production_task_status`
+        CHECK (`TaskStatus` IN ('Todo','InProgress','Done','Blocked')),
+    INDEX `idx_task_order_item` (`OrderItemID`),
+    INDEX `idx_task_status` (`TaskStatus`),
+    CONSTRAINT `fk_task_order_item`
+        FOREIGN KEY (`OrderItemID`) REFERENCES `Order_Item`(`OrderItemID`)
+        ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =============================================================================
 -- INITIAL SEED DATA (12 Tables — Non-Incrementing Code IDs like LR-LV-014)
@@ -209,25 +310,25 @@ INSERT INTO `Material` (`MaterialID`, `MaterialName`, `MaterialType`, `Unit`, `U
 ('MAT-BRS-07', 'Solid Aged Brass Hardware & Butterfly Keys', 'Hardware & Joinery', 'sets', 95.00, 32.00),
 ('MAT-CRD-08', 'Danish Waxed Paper Cord & Cold-Pressed Linseed Oil', 'Cord & Finishes', 'rolls', 42.00, 24.00);
 
--- 6. Voucher (Single-Customer, Single-Product Fixed-Amount Vouchers — Explicit Voucher Code IDs)
-INSERT INTO `Voucher` (`VoucherID`, `CustomerID`, `ProductID`, `AdminID`, `Code`, `DiscountValue`, `ExpiryDate`, `Status`) VALUES
-('VCH-LR-740', 'LR-CUS-301', 'LR-LV-014', 'ADM-LR-901', 'VCH-ROWENA-SOFA400', 400.00, '2026-12-31', 'Active'),
-('VCH-LR-735', 'LR-CUS-301', 'LR-DN-108', 'ADM-LR-901', 'VCH-ROWENA-WALNUT350', 350.00, '2026-12-31', 'Active'),
-('VCH-LR-725', 'LR-CUS-302', 'LR-BD-204', 'ADM-LR-901', 'VCH-JULIAN-BED250', 250.00, '2026-12-15', 'Active'),
-('VCH-LR-710', 'LR-CUS-304', 'LR-OF-315', 'ADM-LR-901', 'VCH-ELENA-DESK300', 300.00, '2026-12-10', 'Used'),
-('VCH-LR-705', 'LR-CUS-308', 'LR-LV-029', 'ADM-LR-901', 'VCH-MARCUS-CHAIR200', 200.00, '2026-10-31', 'Expired'),
-('VCH-LR-690', 'LR-CUS-302', 'LR-OF-302', 'ADM-LR-901', 'VCH-JULIAN-CREDENZA150', 150.00, '2026-12-20', 'Revoked');
+-- 6. Voucher (Single-Customer, Single-Product Fixed-Amount Vouchers — Consolidated `ExpiresAt`)
+INSERT INTO `Voucher` (`VoucherID`, `CustomerID`, `ProductID`, `AdminID`, `Code`, `DiscountValue`, `ExpiresAt`, `Status`) VALUES
+('VCH-LR-740', 'LR-CUS-301', 'LR-LV-014', 'ADM-LR-901', 'VCH-ROWENA-SOFA400', 400.00, '2026-12-31 23:59:59', 'Active'),
+('VCH-LR-735', 'LR-CUS-301', 'LR-DN-108', 'ADM-LR-901', 'VCH-ROWENA-WALNUT350', 350.00, '2026-12-31 23:59:59', 'Active'),
+('VCH-LR-725', 'LR-CUS-302', 'LR-BD-204', 'ADM-LR-901', 'VCH-JULIAN-BED250', 250.00, '2026-12-15 23:59:59', 'Active'),
+('VCH-LR-710', 'LR-CUS-304', 'LR-OF-315', 'ADM-LR-901', 'VCH-ELENA-DESK300', 300.00, '2026-12-10 23:59:59', 'Used'),
+('VCH-LR-705', 'LR-CUS-308', 'LR-LV-029', 'ADM-LR-901', 'VCH-MARCUS-CHAIR200', 200.00, '2026-10-31 23:59:59', 'Expired'),
+('VCH-LR-690', 'LR-CUS-302', 'LR-OF-302', 'ADM-LR-901', 'VCH-JULIAN-CREDENZA150', 150.00, '2026-12-20 23:59:59', 'Revoked');
 
--- 7. Customer_Order (Explicit Order Code IDs across September, October, and November 2026)
-INSERT INTO `Customer_Order` (`OrderID`, `CustomerID`, `OrderDate`, `Status`) VALUES
-('ORD-2026-8841', 'LR-CUS-301', '2026-10-18', 'InProduction'),
-('ORD-2026-8834', 'LR-CUS-301', '2026-10-04', 'Ready'),
-('ORD-2026-8829', 'LR-CUS-302', '2026-10-11', 'InProduction'),
-('ORD-2026-8815', 'LR-CUS-304', '2026-09-26', 'Delivered'),
-('ORD-2026-8850', 'LR-CUS-308', '2026-11-08', 'Pending'),
-('ORD-2026-8854', 'LR-CUS-304', '2026-11-04', 'Delivered'),
-('ORD-2026-8858', 'LR-CUS-301', '2026-11-11', 'Delivered'),
-('ORD-2026-8862', 'LR-CUS-302', '2026-11-15', 'InProduction');
+-- 7. Customer_Order (Explicit Order Code IDs with CompletedAt populated only for Delivered/Completed orders)
+INSERT INTO `Customer_Order` (`OrderID`, `CustomerID`, `OrderDate`, `CompletedAt`, `Status`) VALUES
+('ORD-2026-8841', 'LR-CUS-301', '2026-10-18', NULL, 'InProduction'),
+('ORD-2026-8834', 'LR-CUS-301', '2026-10-04', NULL, 'Ready'),
+('ORD-2026-8829', 'LR-CUS-302', '2026-10-11', NULL, 'InProduction'),
+('ORD-2026-8815', 'LR-CUS-304', '2026-09-26', '2026-09-29', 'Delivered'),
+('ORD-2026-8850', 'LR-CUS-308', '2026-11-08', NULL, 'Pending'),
+('ORD-2026-8854', 'LR-CUS-304', '2026-11-04', '2026-11-04', 'Delivered'),
+('ORD-2026-8858', 'LR-CUS-301', '2026-11-11', '2026-11-11', 'Delivered'),
+('ORD-2026-8862', 'LR-CUS-302', '2026-11-15', NULL, 'InProduction');
 
 -- 8. Order_Item (Explicit OrderItem Code IDs)
 INSERT INTO `Order_Item` (`OrderItemID`, `OrderID`, `ProductID`, `VoucherID`, `ItemType`, `Quantity`, `UnitPrice`) VALUES
@@ -236,7 +337,7 @@ INSERT INTO `Order_Item` (`OrderItemID`, `OrderID`, `ProductID`, `VoucherID`, `I
 ('ITM-2026-5829', 'ORD-2026-8829', 'LR-OF-302', NULL, 'Standard', 2, 3307.00),
 ('ITM-2026-5815', 'ORD-2026-8815', 'LR-BD-204', NULL, 'Standard', 1, 3650.00),
 ('ITM-2026-5850', 'ORD-2026-8850', 'LR-LV-029', NULL, 'Standard', 2, 1840.00),
-('ITM-2026-5854', 'ORD-2026-8854', 'LR-KT-401', 'VCH-LR-710', 'Standard', 1, 3165.00),
+('ITM-2026-5854', 'ORD-2026-8854', 'LR-OF-315', 'VCH-LR-710', 'Standard', 1, 1850.00),
 ('ITM-2026-5858', 'ORD-2026-8858', 'LR-DN-115', NULL, 'Standard', 3, 1290.00),
 ('ITM-2026-5862', 'ORD-2026-8862', 'LR-OF-315', NULL, 'Standard', 1, 2150.00);
 
@@ -247,13 +348,13 @@ INSERT INTO `Order_Item_Material` (`OrderItemID`, `MaterialID`, `QuantityUsed`) 
 ('ITM-2026-5829', 'MAT-WAL-01', 64.00),
 ('ITM-2026-5815', 'MAT-LIN-05', 16.00),
 ('ITM-2026-5850', 'MAT-OAK-02', 24.00),
-('ITM-2026-5854', 'MAT-TRV-06', 2.00),
+('ITM-2026-5854', 'MAT-OAK-02', 18.00),
 ('ITM-2026-5858', 'MAT-CRD-08', 4.00),
 ('ITM-2026-5862', 'MAT-OAK-02', 18.00);
 
--- 10. Customization (Explicit Customization Code ID)
-INSERT INTO `Customization` (`CustomizationID`, `OrderItemID`, `MaterialID`, `Length`, `Width`, `Height`, `ColorFinish`, `Notes`, `ExtraCost`) VALUES
-('CSM-2026-6841', 'ITM-2026-5841', 'MAT-WAL-01', 260.00, 110.00, 75.00, 'Hand-Rubbed Natural Walnut', 'Book-matched walnut slab approved by client via slab photography.', 0.00);
+-- 10. Customization (Normalized 3NF: Material allocation lives in Order_Item_Material)
+INSERT INTO `Customization` (`CustomizationID`, `OrderItemID`, `Length`, `Width`, `Height`, `ColorFinish`, `Notes`, `ExtraCost`) VALUES
+('CSM-2026-6841', 'ITM-2026-5841', 260.00, 110.00, 75.00, 'Hand-Rubbed Natural Walnut', 'Book-matched walnut slab approved by client via slab photography.', 0.00);
 
 -- 11. Payment (Explicit Payment Code IDs)
 INSERT INTO `Payment` (`PaymentID`, `OrderID`, `PaymentDate`, `Amount`) VALUES
@@ -265,16 +366,16 @@ INSERT INTO `Payment` (`PaymentID`, `OrderID`, `PaymentDate`, `Amount`) VALUES
 ('PAY-2026-9858', 'ORD-2026-8858', '2026-11-11', 3870.00),
 ('PAY-2026-9862', 'ORD-2026-8862', '2026-11-15', 2150.00);
 
--- 12. Production_Task (Explicit Task Code IDs)
-INSERT INTO `Production_Task` (`TaskID`, `OrderItemID`, `StartDate`, `EndDate`, `TaskStatus`) VALUES
-('TSK-2026-2841', 'ITM-2026-5841', '2026-10-18', NULL, 'InProgress'),
-('TSK-2026-2834', 'ITM-2026-5834', '2026-10-04', '2026-11-12', 'Done'),
-('TSK-2026-2829', 'ITM-2026-5829', '2026-10-11', NULL, 'InProgress'),
-('TSK-2026-2815', 'ITM-2026-5815', '2026-09-26', '2026-11-08', 'Done'),
-('TSK-2026-2850', 'ITM-2026-5850', '2026-11-08', NULL, 'Todo'),
-('TSK-2026-2854', 'ITM-2026-5854', '2026-11-04', '2026-11-14', 'Done'),
-('TSK-2026-2858', 'ITM-2026-5858', '2026-11-11', '2026-11-15', 'Done'),
-('TSK-2026-2862', 'ITM-2026-5862', '2026-11-15', NULL, 'InProgress');
+-- 12. Production_Task (Normalized 3NF: Completion date lives on Customer_Order.CompletedAt)
+INSERT INTO `Production_Task` (`TaskID`, `OrderItemID`, `StartDate`, `TaskStatus`) VALUES
+('TSK-2026-2841', 'ITM-2026-5841', '2026-10-18', 'InProgress'),
+('TSK-2026-2834', 'ITM-2026-5834', '2026-10-04', 'Done'),
+('TSK-2026-2829', 'ITM-2026-5829', '2026-10-11', 'InProgress'),
+('TSK-2026-2815', 'ITM-2026-5815', '2026-09-26', 'Done'),
+('TSK-2026-2850', 'ITM-2026-5850', '2026-11-08', 'Todo'),
+('TSK-2026-2854', 'ITM-2026-5854', '2026-11-04', 'Done'),
+('TSK-2026-2858', 'ITM-2026-5858', '2026-11-11', 'Done'),
+('TSK-2026-2862', 'ITM-2026-5862', '2026-11-15', 'InProgress');
 
 -- =============================================================================
 -- STORED PROCEDURES & TRIGGERS
@@ -292,14 +393,13 @@ BEGIN
     DECLARE v_product    VARCHAR(50);
     DECLARE v_discount   DECIMAL(10,2);
     DECLARE v_status     VARCHAR(20);
-    DECLARE v_expiry     DATE;
     DECLARE v_expires_at DATETIME;
     DECLARE p_base_price DECIMAL(10,2);
     DECLARE o_customer   VARCHAR(50);
 
     IF p_voucher_id IS NOT NULL THEN
-        SELECT CustomerID, ProductID, DiscountValue, Status, ExpiryDate, ExpiresAt
-          INTO v_customer, v_product, v_discount, v_status, v_expiry, v_expires_at
+        SELECT CustomerID, ProductID, DiscountValue, Status, ExpiresAt
+          INTO v_customer, v_product, v_discount, v_status, v_expires_at
           FROM Voucher WHERE VoucherID = p_voucher_id;
 
         SELECT BasePrice INTO p_base_price
@@ -323,9 +423,6 @@ BEGIN
                 SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Voucher is not active';
             END IF;
             IF v_expires_at IS NOT NULL AND v_expires_at <= NOW() THEN
-                SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Voucher has expired';
-            END IF;
-            IF v_expires_at IS NULL AND v_expiry IS NOT NULL AND v_expiry < CURDATE() THEN
                 SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Voucher has expired';
             END IF;
         END IF;

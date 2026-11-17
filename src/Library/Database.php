@@ -81,30 +81,32 @@ class Database
             "CREATE TABLE IF NOT EXISTS `Category` (
                 `CategoryID` VARCHAR(50) NOT NULL PRIMARY KEY,
                 `CategoryName` VARCHAR(100) NOT NULL UNIQUE,
-                `Description` TEXT
+                `Description` VARCHAR(255) DEFAULT NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
             "CREATE TABLE IF NOT EXISTS `Customer` (
                 `CustomerID` VARCHAR(50) NOT NULL PRIMARY KEY,
                 `FullName` VARCHAR(150) NOT NULL,
                 `Email` VARCHAR(255) NOT NULL UNIQUE,
                 `PasswordHash` VARCHAR(255) NOT NULL,
-                `PhoneNumber` VARCHAR(30),
-                `Address` VARCHAR(255)
+                `PhoneNumber` VARCHAR(30) DEFAULT NULL,
+                `Address` VARCHAR(255) DEFAULT NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
             "CREATE TABLE IF NOT EXISTS `Product` (
                 `ProductID` VARCHAR(50) NOT NULL PRIMARY KEY,
                 `CategoryID` VARCHAR(50) NOT NULL,
                 `ProductName` VARCHAR(150) NOT NULL,
                 `BasePrice` DECIMAL(10,2) NOT NULL,
-                FOREIGN KEY (`CategoryID`) REFERENCES `Category`(`CategoryID`)
+                INDEX `idx_product_category` (`CategoryID`),
+                FOREIGN KEY (`CategoryID`) REFERENCES `Category`(`CategoryID`) ON UPDATE CASCADE ON DELETE RESTRICT
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
             "CREATE TABLE IF NOT EXISTS `Material` (
                 `MaterialID` VARCHAR(50) NOT NULL PRIMARY KEY,
                 `MaterialName` VARCHAR(150) NOT NULL,
-                `MaterialType` VARCHAR(100),
+                `MaterialType` VARCHAR(100) NOT NULL DEFAULT 'Solid Timber',
                 `Unit` VARCHAR(20) NOT NULL,
                 `UnitCost` DECIMAL(10,2) NOT NULL,
-                `StockQuantity` DECIMAL(12,2) NOT NULL DEFAULT 0
+                `StockQuantity` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+                INDEX `idx_material_type` (`MaterialType`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
             "CREATE TABLE IF NOT EXISTS `Voucher` (
                 `VoucherID` VARCHAR(50) NOT NULL PRIMARY KEY,
@@ -113,23 +115,27 @@ class Database
                 `AdminID` VARCHAR(50) NOT NULL,
                 `Code` VARCHAR(50) NOT NULL UNIQUE,
                 `DiscountValue` DECIMAL(10,2) NOT NULL,
-                `ExpiryDate` DATE DEFAULT NULL,
                 `ExpiresAt` DATETIME DEFAULT NULL,
                 `Status` VARCHAR(20) NOT NULL DEFAULT 'Active',
                 `IssuedAt` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE (`VoucherID`, `ProductID`),
-                FOREIGN KEY (`CustomerID`) REFERENCES `Customer`(`CustomerID`),
-                FOREIGN KEY (`ProductID`) REFERENCES `Product`(`ProductID`),
-                FOREIGN KEY (`AdminID`) REFERENCES `Admin`(`AdminID`)
+                INDEX `idx_voucher_customer` (`CustomerID`),
+                INDEX `idx_voucher_product` (`ProductID`),
+                INDEX `idx_voucher_status` (`Status`),
+                FOREIGN KEY (`CustomerID`) REFERENCES `Customer`(`CustomerID`) ON UPDATE CASCADE ON DELETE CASCADE,
+                FOREIGN KEY (`ProductID`) REFERENCES `Product`(`ProductID`) ON UPDATE CASCADE ON DELETE CASCADE,
+                FOREIGN KEY (`AdminID`) REFERENCES `Admin`(`AdminID`) ON UPDATE CASCADE ON DELETE RESTRICT
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
-            "ALTER TABLE `Voucher` ADD COLUMN `ExpiresAt` DATETIME DEFAULT NULL AFTER `ExpiryDate`",
+            "ALTER TABLE `Voucher` DROP COLUMN `ExpiryDate`",
             "CREATE TABLE IF NOT EXISTS `Customer_Order` (
                 `OrderID` VARCHAR(50) NOT NULL PRIMARY KEY,
                 `CustomerID` VARCHAR(50) NOT NULL,
                 `OrderDate` DATE NOT NULL,
                 `CompletedAt` DATE DEFAULT NULL,
                 `Status` VARCHAR(20) NOT NULL DEFAULT 'Pending',
-                FOREIGN KEY (`CustomerID`) REFERENCES `Customer`(`CustomerID`)
+                INDEX `idx_order_customer` (`CustomerID`),
+                INDEX `idx_order_status_completed` (`Status`, `CompletedAt`, `OrderDate`),
+                FOREIGN KEY (`CustomerID`) REFERENCES `Customer`(`CustomerID`) ON UPDATE CASCADE ON DELETE RESTRICT
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
             "ALTER TABLE `Customer_Order` ADD COLUMN `CompletedAt` DATE DEFAULT NULL AFTER `OrderDate`",
             "CREATE TABLE IF NOT EXISTS `Order_Item` (
@@ -140,46 +146,50 @@ class Database
                 `ItemType` VARCHAR(20) NOT NULL DEFAULT 'Standard',
                 `Quantity` INT NOT NULL DEFAULT 1,
                 `UnitPrice` DECIMAL(10,2) NOT NULL,
-                FOREIGN KEY (`OrderID`) REFERENCES `Customer_Order`(`OrderID`) ON DELETE CASCADE,
-                FOREIGN KEY (`ProductID`) REFERENCES `Product`(`ProductID`),
-                FOREIGN KEY (`VoucherID`, `ProductID`) REFERENCES `Voucher`(`VoucherID`, `ProductID`)
+                INDEX `idx_order_item_order` (`OrderID`),
+                INDEX `idx_order_item_product` (`ProductID`),
+                FOREIGN KEY (`OrderID`) REFERENCES `Customer_Order`(`OrderID`) ON UPDATE CASCADE ON DELETE CASCADE,
+                FOREIGN KEY (`ProductID`) REFERENCES `Product`(`ProductID`) ON UPDATE CASCADE ON DELETE RESTRICT,
+                FOREIGN KEY (`VoucherID`, `ProductID`) REFERENCES `Voucher`(`VoucherID`, `ProductID`) ON UPDATE CASCADE ON DELETE SET NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
             "CREATE TABLE IF NOT EXISTS `Order_Item_Material` (
                 `OrderItemID` VARCHAR(50) NOT NULL,
                 `MaterialID` VARCHAR(50) NOT NULL,
                 `QuantityUsed` DECIMAL(12,2) NOT NULL,
                 PRIMARY KEY (`OrderItemID`, `MaterialID`),
-                FOREIGN KEY (`OrderItemID`) REFERENCES `Order_Item`(`OrderItemID`) ON DELETE CASCADE,
-                FOREIGN KEY (`MaterialID`) REFERENCES `Material`(`MaterialID`)
+                INDEX `idx_oim_material` (`MaterialID`),
+                FOREIGN KEY (`OrderItemID`) REFERENCES `Order_Item`(`OrderItemID`) ON UPDATE CASCADE ON DELETE CASCADE,
+                FOREIGN KEY (`MaterialID`) REFERENCES `Material`(`MaterialID`) ON UPDATE CASCADE ON DELETE RESTRICT
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
             "CREATE TABLE IF NOT EXISTS `Customization` (
                 `CustomizationID` VARCHAR(50) NOT NULL PRIMARY KEY,
                 `OrderItemID` VARCHAR(50) NOT NULL UNIQUE,
-                `MaterialID` VARCHAR(50) DEFAULT NULL,
                 `Length` DECIMAL(8,2) DEFAULT NULL,
                 `Width` DECIMAL(8,2) DEFAULT NULL,
                 `Height` DECIMAL(8,2) DEFAULT NULL,
                 `ColorFinish` VARCHAR(100) DEFAULT NULL,
-                `Notes` TEXT DEFAULT NULL,
-                `ExtraCost` DECIMAL(10,2) NOT NULL DEFAULT 0,
-                FOREIGN KEY (`OrderItemID`) REFERENCES `Order_Item`(`OrderItemID`) ON DELETE CASCADE,
-                FOREIGN KEY (`MaterialID`) REFERENCES `Material`(`MaterialID`)
+                `Notes` VARCHAR(255) DEFAULT NULL,
+                `ExtraCost` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                FOREIGN KEY (`OrderItemID`) REFERENCES `Order_Item`(`OrderItemID`) ON UPDATE CASCADE ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            "ALTER TABLE `Customization` DROP COLUMN `MaterialID`",
             "CREATE TABLE IF NOT EXISTS `Payment` (
                 `PaymentID` VARCHAR(50) NOT NULL PRIMARY KEY,
                 `OrderID` VARCHAR(50) NOT NULL,
                 `PaymentDate` DATE NOT NULL,
                 `Amount` DECIMAL(10,2) NOT NULL,
-                FOREIGN KEY (`OrderID`) REFERENCES `Customer_Order`(`OrderID`)
+                INDEX `idx_payment_order` (`OrderID`),
+                FOREIGN KEY (`OrderID`) REFERENCES `Customer_Order`(`OrderID`) ON UPDATE CASCADE ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
             "CREATE TABLE IF NOT EXISTS `Production_Task` (
                 `TaskID` VARCHAR(50) NOT NULL PRIMARY KEY,
                 `OrderItemID` VARCHAR(50) NOT NULL,
                 `StartDate` DATE DEFAULT NULL,
-                `EndDate` DATE DEFAULT NULL,
                 `TaskStatus` VARCHAR(20) NOT NULL DEFAULT 'Todo',
-                FOREIGN KEY (`OrderItemID`) REFERENCES `Order_Item`(`OrderItemID`) ON DELETE CASCADE
+                INDEX `idx_task_order_item` (`OrderItemID`),
+                FOREIGN KEY (`OrderItemID`) REFERENCES `Order_Item`(`OrderItemID`) ON UPDATE CASCADE ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            "ALTER TABLE `Production_Task` DROP COLUMN `EndDate`",
         ];
 
         foreach ($ddlStatements as $sql) {
@@ -501,8 +511,8 @@ class Database
                     $decoded['products'] = $existingProds;
                 }
 
-                // Sync Voucher Status from PDO MySQL Voucher table
-                $dbVouchers = $this->fetchAll('SELECT Code, DiscountValue, ExpiryDate, ExpiresAt, Status, IssuedAt FROM Voucher');
+                // Sync Voucher Status from PDO MySQL Voucher table (ExpiresAt is authoritative)
+                $dbVouchers = $this->fetchAll('SELECT Code, DiscountValue, ExpiresAt, Status, IssuedAt FROM Voucher');
                 if (!empty($dbVouchers) && isset($decoded['vouchers']) && is_array($decoded['vouchers'])) {
                     $vByCode = [];
                     foreach ($dbVouchers as $row) {
@@ -513,8 +523,13 @@ class Database
                         if (isset($vByCode[$codeKey])) {
                             $v['status'] = (string) $vByCode[$codeKey]['Status'];
                             $v['discountValue'] = (float) $vByCode[$codeKey]['DiscountValue'];
-                            if (!empty($vByCode[$codeKey]['ExpiresAt']) && empty($v['expiresAt'])) {
-                                $v['expiresAt'] = (string) $vByCode[$codeKey]['ExpiresAt'];
+                            if (!empty($vByCode[$codeKey]['ExpiresAt'])) {
+                                if (empty($v['expiresAt'])) {
+                                    $v['expiresAt'] = (string) $vByCode[$codeKey]['ExpiresAt'];
+                                }
+                                if (empty($v['expiryDate'])) {
+                                    $v['expiryDate'] = substr((string) $vByCode[$codeKey]['ExpiresAt'], 0, 10);
+                                }
                             }
                         }
                     }
@@ -679,7 +694,9 @@ class Database
                         ? (string) $voucher['status']
                         : 'Active';
                     $expiry = !empty($voucher['expiryDate']) ? (string) $voucher['expiryDate'] : null;
-                    $expiresAtRaw = !empty($voucher['expiresAt']) ? (string) $voucher['expiresAt'] : null;
+                    $expiresAtRaw = !empty($voucher['expiresAt'])
+                        ? (string) $voucher['expiresAt']
+                        : ($expiry !== null ? $expiry . ' 23:59:59' : null);
                     $expiresAtSql = null;
                     if ($expiresAtRaw !== null) {
                         try {
@@ -694,10 +711,9 @@ class Database
                     $existing = $this->fetch('SELECT VoucherID FROM Voucher WHERE Code = :code LIMIT 1', [':code' => $code]);
                     if ($existing !== null) {
                         $this->query(
-                            'UPDATE Voucher SET DiscountValue = :val, ExpiryDate = :exp, ExpiresAt = :expat, Status = :status WHERE VoucherID = :id',
+                            'UPDATE Voucher SET DiscountValue = :val, ExpiresAt = :expat, Status = :status WHERE VoucherID = :id',
                             [
                                 ':val'    => $discount,
-                                ':exp'    => $expiry,
                                 ':expat'  => $expiresAtSql,
                                 ':status' => $status,
                                 ':id'     => (string) $existing['VoucherID'],
@@ -705,13 +721,12 @@ class Database
                         );
                     } else {
                         $this->query(
-                            "INSERT IGNORE INTO Voucher (VoucherID, CustomerID, ProductID, AdminID, Code, DiscountValue, ExpiryDate, ExpiresAt, Status)
-                             VALUES (:vid, 'LR-CUS-301', 'LR-LV-014', 'ADM-LR-901', :code, :val, :exp, :expat, :status)",
+                            "INSERT IGNORE INTO Voucher (VoucherID, CustomerID, ProductID, AdminID, Code, DiscountValue, ExpiresAt, Status)
+                             VALUES (:vid, 'LR-CUS-301', 'LR-LV-014', 'ADM-LR-901', :code, :val, :expat, :status)",
                             [
                                 ':vid'    => $voucherId,
                                 ':code'   => $code,
                                 ':val'    => $discount,
-                                ':exp'    => $expiry,
                                 ':expat'  => $expiresAtSql,
                                 ':status' => $status,
                             ]
@@ -791,8 +806,8 @@ class Database
                         if ($itemType === 'Custom') {
                             $customizationId = strtoupper(trim((string) ($ord['customizationId'] ?? ('CSM-2026-' . $suffixDigits))));
                             $this->query(
-                                "INSERT IGNORE INTO Customization (CustomizationID, OrderItemID, MaterialID, Length, Width, Height, ColorFinish, Notes, ExtraCost)
-                                 VALUES (:cid, :oiid, 'MAT-WAL-01', :len, :wid, :hei, :finish, :notes, :extra)",
+                                "INSERT IGNORE INTO Customization (CustomizationID, OrderItemID, Length, Width, Height, ColorFinish, Notes, ExtraCost)
+                                 VALUES (:cid, :oiid, :len, :wid, :hei, :finish, :notes, :extra)",
                                 [
                                     ':cid'    => $customizationId,
                                     ':oiid'   => $orderItemId,

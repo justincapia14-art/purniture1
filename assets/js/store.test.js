@@ -1022,7 +1022,72 @@ describe('Pure JavaScript & Server Store Logic Tests', () => {
     assert.equal(lookedUpVoucher.discountAmount, 400);
     assert.equal(voucherTable.get('NON-EXISTENT-CODE'), null);
   });
+
+  it('verifies the optimized 3NF database schema in database/furniture.sql and src/Library/Database.php with no redundant entities or columns', () => {
+    const sqlContent = fs.readFileSync(path.join(process.cwd(), 'database', 'furniture.sql'), 'utf8');
+    const backupContent = fs.readFileSync(
+      path.join(process.cwd(), 'database', 'backup_before_optimization.sql'),
+      'utf8'
+    );
+    const dbPhpContent = fs.readFileSync(path.join(process.cwd(), 'src', 'Library', 'Database.php'), 'utf8');
+
+    // Pre-optimization backup exists and is non-empty
+    assert.ok(backupContent.length > 5000);
+
+    // Exactly 12 active normalized tables are created
+    const expectedTables = [
+      'Admin',
+      'Category',
+      'Customer',
+      'Product',
+      'Material',
+      'Voucher',
+      'Customer_Order',
+      'Order_Item',
+      'Order_Item_Material',
+      'Customization',
+      'Payment',
+      'Production_Task',
+    ];
+    for (const tableName of expectedTables) {
+      assert.match(sqlContent, new RegExp(`CREATE TABLE \`?${tableName}\`?\\s*\\(`, 'i'));
+    }
+
+    // Legacy unused entities are explicitly dropped and not created
+    for (const removedTable of ['Supplier', 'Employee', 'Delivery']) {
+      assert.match(sqlContent, new RegExp(`DROP TABLE IF EXISTS \`?${removedTable}\`?`, 'i'));
+      assert.equal(new RegExp(`CREATE TABLE \`?${removedTable}\`?\\s*\\(`, 'i').test(sqlContent), false);
+    }
+
+    // Redundant columns removed from Voucher, Customization, and Production_Task
+    const voucherTableBlock = sqlContent.slice(
+      sqlContent.indexOf('CREATE TABLE `Voucher`'),
+      sqlContent.indexOf('CREATE TABLE `Customer_Order`')
+    );
+    assert.equal(/\bExpiryDate\b/.test(voucherTableBlock), false);
+    assert.match(voucherTableBlock, /`?ExpiresAt`?\s+DATETIME/);
+
+    const customizationTableBlock = sqlContent.slice(
+      sqlContent.indexOf('CREATE TABLE `Customization`'),
+      sqlContent.indexOf('CREATE TABLE `Payment`')
+    );
+    assert.equal(/\bMaterialID\b/.test(customizationTableBlock), false);
+    assert.match(customizationTableBlock, /`?ExtraCost`?\s+DECIMAL\(10,\s*2\)/);
+
+    const taskTableBlock = sqlContent.slice(
+      sqlContent.indexOf('CREATE TABLE `Production_Task`'),
+      sqlContent.indexOf('-- =============================================================================', sqlContent.indexOf('CREATE TABLE `Production_Task`'))
+    );
+    assert.equal(/\bEndDate\b/.test(taskTableBlock), false);
+    assert.match(taskTableBlock, /`?StartDate`?\s+DATE/);
+
+    // Database.php DDL and sync queries match the 3NF schema
+    assert.equal(dbPhpContent.includes('INSERT INTO Voucher (VoucherID, Code, CustomerID, ProductID, DiscountType, DiscountValue, ExpiryDate'), false);
+    assert.equal(dbPhpContent.includes('INSERT INTO Customization (CustomizationID, OrderItemID, MaterialID'), false);
+    assert.equal(dbPhpContent.includes('INSERT INTO Production_Task (TaskID, OrderItemID, TaskStatus, StartDate, EndDate)'), false);
+  });
 });
+
 
 
 
