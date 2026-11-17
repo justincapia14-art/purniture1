@@ -38,8 +38,12 @@ $sessionPayload = [
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="assets/css/style.css" />
+    <?php $serverFlash = function_exists('getFlashMessage') ? getFlashMessage() : null; ?>
     <script>
       window.__SERVER_SESSION_USER__ = <?= json_encode($sessionPayload, JSON_UNESCAPED_SLASHES) ?>;
+      <?php if (is_array($serverFlash)): ?>
+      window.__SERVER_FLASH__ = <?= json_encode($serverFlash, JSON_UNESCAPED_SLASHES) ?>;
+      <?php endif; ?>
     </script>
   </head>
   <body class="bg-[#F4F9FF] text-[#0F172A] antialiased selection:bg-[#0095FF] selection:text-white min-h-screen flex flex-col">

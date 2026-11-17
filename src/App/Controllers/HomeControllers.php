@@ -64,6 +64,22 @@ class HomeControllers
                 $_SESSION['user'] = $authenticatedUser;
                 $targetRole = strcasecmp((string) ($authenticatedUser['role'] ?? ''), 'Admin') === 0 ? 'admin' : 'client';
 
+                if (function_exists('setFlashMessage')) {
+                    if ($mode === 'register') {
+                        setFlashMessage(
+                            'success',
+                            'Account Created Successfully',
+                            'Welcome to Lillia and Rowena Furniture, ' . (string) ($authenticatedUser['fullName'] ?? 'Customer') . '!'
+                        );
+                    } else {
+                        setFlashMessage(
+                            'success',
+                            'Signed In Successfully',
+                            'Welcome back, ' . (string) ($authenticatedUser['fullName'] ?? ($authenticatedUser['email'] ?? 'Account')) . '.'
+                        );
+                    }
+                }
+
                 if ($isAjax) {
                     jsonResponse([
                         'ok'       => true,
@@ -164,6 +180,16 @@ class HomeControllers
         if (session_status() === PHP_SESSION_ACTIVE) {
             session_destroy();
         }
-        redirect('index.php');
+        if (session_status() === PHP_SESSION_NONE) {
+            @session_start();
+        }
+        if (function_exists('setFlashMessage')) {
+            setFlashMessage(
+                'success',
+                'Logged Out Successfully',
+                'You have been safely signed out of your account.'
+            );
+        }
+        redirect('index.php?logged_out=1');
     }
 }

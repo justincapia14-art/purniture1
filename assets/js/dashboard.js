@@ -44,6 +44,16 @@ import {
 } from './store.js';
 
 import { buildAnalyticsCsvContent, buildAnalyticsPdfBytes, computeMonthlyAnalyticsReport, resolveAnalyticsDateRange } from './analytics.js';
+import {
+  consumeFlashToasts,
+  showToast,
+  queueFlashToast,
+  withButtonLoading,
+  confirmAndExecuteLogout,
+  openConfirmDialog,
+  setFieldError,
+  clearFormErrors,
+} from './feedback.js';
 
 export function createDashboard({
   state,
@@ -92,6 +102,9 @@ function initDashboardPage() {
     );
     return;
   }
+
+  consumeFlashToasts();
+
   const topHeader = document.getElementById('portal-top-header');
   const clientWrapper = document.getElementById('client-portal-wrapper');
   const clientView = document.getElementById('client-portal-view');
@@ -146,22 +159,29 @@ function initDashboardPage() {
   if (adminSidebarEmail) adminSidebarEmail.textContent = state.customerProfile.email;
   syncCustomerAvatarDOM(state.customerProfile);
 
-  const handlePortalLogout = async (e) => {
-    e.preventDefault();
-    state.sessionUser = null;
-    state.cartItems = [];
-    try {
-      await fetch('api.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'save_session', sessionUser: null }),
+  const handlePortalLogout = (e) => {
+    if (e) e.preventDefault();
+    confirmAndExecuteLogout(async () => {
+      state.sessionUser = null;
+      state.cartItems = [];
+      try {
+        await fetch(API_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'save_session', sessionUser: null }),
+        });
+      } catch (_err) {
+        // Ignore network error
+      }
+      queueFlashToast({
+        type: 'success',
+        title: 'Logged Out Successfully',
+        message: 'You have been safely signed out of your account.',
       });
-    } catch (_err) {
-      // Ignore network error
-    }
-    window.location.href = window.location.pathname.endsWith('.php')
-      ? new URL('logout.php', window.location.href).href
-      : 'login.html';
+      window.location.href = window.location.pathname.endsWith('.php')
+        ? new URL('logout.php', window.location.href).href
+        : 'login.html?logged_out=1';
+    });
   };
   if (logoutBtn) logoutBtn.addEventListener('click', handlePortalLogout);
   if (adminLogoutBtn) adminLogoutBtn.addEventListener('click', handlePortalLogout);
@@ -261,59 +281,112 @@ function initDashboardPage() {
   const clientAvatarClearBtn = document.getElementById('client-profile-avatar-clear-btn');
   if (clientAvatarClearBtn) {
     clientAvatarClearBtn.addEventListener('click', () => {
-      if (clientAvatarFileInput) clientAvatarFileInput.value = '';
-      applyCustomerAvatarUpdate('');
-      showClientBanner('Removed your profile picture.');
+      openConfirmDialog({
+        title: 'Remove Profile Photo?',
+        description: 'Are you sure you want to remove your saved profile picture? Your account initials will be displayed instead.',
+        confirmLabel: 'Remove Photo',
+        cancelLabel: 'Cancel',
+        loadingLabel: 'Removing...',
+        variant: 'danger',
+        icon: 'warning',
+        onConfirm: () => {
+          if (clientAvatarFileInput) clientAvatarFileInput.value = '';
+          applyCustomerAvatarUpdate('');
+          showClientBanner('Removed your profile picture.');
+        },
+      });
     });
   }
 
   // Customer Address & Contact Form Submit
   const addressForm = document.getElementById('client-address-form');
   if (addressForm) {
-    addressForm.addEventListener('submit', (e) => {
+    addressForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const nameVal = document.getElementById('client-input-name')?.value.trim() || state.customerProfile.name;
-      const emailVal = document.getElementById('client-input-email')?.value.trim() || state.customerProfile.email;
-      const phoneVal = document.getElementById('client-input-phone')?.value.trim() || state.customerProfile.phone;
-      const cityVal = document.getElementById('client-input-city')?.value.trim() || state.customerProfile.city;
-      const addressVal = document.getElementById('client-input-address')?.value.trim() || state.customerProfile.address;
+      clearFormErrors(addressForm);
+      const nameInputEl = document.getElementById('client-input-name');
+      const emailInputEl = document.getElementById('client-input-email');
+      const phoneInputEl = document.getElementById('client-input-phone');
+      const cityInputEl = document.getElementById('client-input-city');
+      const addressInputEl = document.getElementById('client-input-address');
+
+      const nameVal = nameInputEl?.value.trim() ?? '';
+      const emailVal = emailInputEl?.value.trim() ?? '';
+      const phoneVal = phoneInputEl?.value.trim() ?? '';
+      const cityVal = cityInputEl?.value.trim() ?? '';
+      const addressVal = addressInputEl?.value.trim() ?? '';
       const notesVal = document.getElementById('client-input-notes')?.value.trim() || state.customerProfile.notes;
       const avatarVal = document.getElementById('client-input-avatar')?.value.trim() ?? (state.customerProfile.avatar || '');
 
-      state.customerProfile = {
-        name: nameVal,
-        email: emailVal,
-        phone: phoneVal,
-        city: cityVal,
-        address: addressVal,
-        notes: notesVal,
-        avatar: avatarVal,
-      };
-      if (Array.isArray(state.customers)) {
-        const targetEmail = emailVal.toLowerCase();
-        state.customers = state.customers.map((c) =>
-          String(c.email || '').trim().toLowerCase() === targetEmail
-            ? { ...c, name: nameVal, fullName: nameVal, phone: phoneVal, phoneNumber: phoneVal, address: addressVal, avatar: avatarVal }
-            : c
-        );
+      let firstInvalid = null;
+      if (nameVal.length < 2) {
+        setFieldError(nameInputEl, 'Please enter your full name.', false);
+        firstInvalid = firstInvalid || nameInputEl;
       }
-      saveCustomerProfileToStorage();
-
-      if (state.sessionUser) {
-        state.sessionUser.name = nameVal;
-        state.sessionUser.email = emailVal;
-        state.sessionUser.avatar = avatarVal;
-        saveSessionUserToServer(state.sessionUser);
+      if (!emailVal || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+        setFieldError(emailInputEl, 'Please enter a valid email address.', false);
+        firstInvalid = firstInvalid || emailInputEl;
       }
-      if (welcomeName) welcomeName.textContent = nameVal;
-      if (welcomeEmail) welcomeEmail.textContent = emailVal;
-      if (sidebarName) sidebarName.textContent = nameVal;
-      if (sidebarEmail) sidebarEmail.textContent = emailVal;
-      if (userBadge) userBadge.textContent = `${nameVal} (Customer)`;
-      syncCustomerAvatarDOM(state.customerProfile);
+      if (phoneVal.length < 7) {
+        setFieldError(phoneInputEl, 'Please enter a valid phone number.', false);
+        firstInvalid = firstInvalid || phoneInputEl;
+      }
+      if (cityVal.length < 2) {
+        setFieldError(cityInputEl, 'Please enter your city and postal code.', false);
+        firstInvalid = firstInvalid || cityInputEl;
+      }
+      if (addressVal.length < 5) {
+        setFieldError(addressInputEl, 'Please enter your street delivery address.', false);
+        firstInvalid = firstInvalid || addressInputEl;
+      }
 
-      showClientBanner('Saved your updated Profile, Address & Contact information.');
-      renderDashboardContent();
+      if (firstInvalid) {
+        if (typeof firstInvalid.focus === 'function') firstInvalid.focus();
+        showToast({
+          type: 'error',
+          title: 'Please Check Required Fields',
+          message: 'Please complete all highlighted profile and delivery address fields.',
+        });
+        return;
+      }
+
+      const submitBtn = addressForm.querySelector('button[type="submit"]');
+      await withButtonLoading(submitBtn, 'Saving changes...', async () => {
+        state.customerProfile = {
+          name: nameVal,
+          email: emailVal,
+          phone: phoneVal,
+          city: cityVal,
+          address: addressVal,
+          notes: notesVal,
+          avatar: avatarVal,
+        };
+        if (Array.isArray(state.customers)) {
+          const targetEmail = emailVal.toLowerCase();
+          state.customers = state.customers.map((c) =>
+            String(c.email || '').trim().toLowerCase() === targetEmail
+              ? { ...c, name: nameVal, fullName: nameVal, phone: phoneVal, phoneNumber: phoneVal, address: addressVal, avatar: avatarVal }
+              : c
+          );
+        }
+        saveCustomerProfileToStorage();
+
+        if (state.sessionUser) {
+          state.sessionUser.name = nameVal;
+          state.sessionUser.email = emailVal;
+          state.sessionUser.avatar = avatarVal;
+          saveSessionUserToServer(state.sessionUser);
+        }
+        if (welcomeName) welcomeName.textContent = nameVal;
+        if (welcomeEmail) welcomeEmail.textContent = emailVal;
+        if (sidebarName) sidebarName.textContent = nameVal;
+        if (sidebarEmail) sidebarEmail.textContent = emailVal;
+        if (userBadge) userBadge.textContent = `${nameVal} (Customer)`;
+        syncCustomerAvatarDOM(state.customerProfile);
+
+        showClientBanner('Profile updated successfully. Saved your delivery address & contact information.');
+        renderDashboardContent();
+      });
     });
   }
 
@@ -357,141 +430,161 @@ function initDashboardPage() {
   const clientVoucherFeedback = document.getElementById('client-cart-voucher-feedback');
   if (clientApplyVoucherBtn && clientVoucherInput) {
     clientApplyVoucherBtn.addEventListener('click', async () => {
-      const code = clientVoucherInput.value.trim().toUpperCase();
-      const email = state.customerProfile.email || state.sessionUser?.email || '';
-      let result = validateVoucherForOrder(
-        state.vouchers,
-        code,
-        email,
-        state.cartItems,
-        state.catalog
-      );
+      await withButtonLoading(clientApplyVoucherBtn, 'Applying voucher...', async () => {
+        const code = clientVoucherInput.value.trim().toUpperCase();
+        const email = state.customerProfile.email || state.sessionUser?.email || '';
+        let result = validateVoucherForOrder(
+          state.vouchers,
+          code,
+          email,
+          state.cartItems,
+          state.catalog
+        );
 
-      if (result.valid) {
-        try {
-          const resp = await fetch(API_ENDPOINT, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin',
-            body: JSON.stringify({
-              action: 'validate_voucher',
-              voucherCode: code,
-              customerEmail: email,
-              cartItems: state.cartItems.map((c) => ({
-                productId: c.product.id,
-                quantity: c.quantity,
-              })),
-            }),
-          });
-          const data = await resp.json();
-          if (!resp.ok || !data.valid) {
-            result = {
-              valid: false,
-              discountAmount: 0,
-              voucher: null,
-              errorMessage: data.error || 'Voucher validation failed on server.',
-            };
-          }
-        } catch (_err) {
-          // Offline fallback uses local store validation
-        }
-      }
-
-      if (clientVoucherFeedback) {
-        clientVoucherFeedback.classList.remove('hidden');
         if (result.valid) {
-          state.appliedVoucher = result.voucher;
-          const targetProdName =
-            result.voucher.furnitureName || result.voucher.productName || 'selected product';
-          clientVoucherFeedback.textContent = `✓ Voucher ${result.voucher.code} (${formatVoucherBenefitLabel(result.voucher)}) applied to "${targetProdName}" (-${usd(result.discountAmount)})!`;
-          clientVoucherFeedback.className = 'text-xs font-semibold text-emerald-700';
-        } else {
-          state.appliedVoucher = null;
-          clientVoucherFeedback.textContent = `✕ ${result.errorMessage}`;
-          clientVoucherFeedback.className = 'text-xs font-semibold text-rose-700';
+          try {
+            const resp = await fetch(API_ENDPOINT, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'same-origin',
+              body: JSON.stringify({
+                action: 'validate_voucher',
+                voucherCode: code,
+                customerEmail: email,
+                cartItems: state.cartItems.map((c) => ({
+                  productId: c.product.id,
+                  quantity: c.quantity,
+                })),
+              }),
+            });
+            const data = await resp.json();
+            if (!resp.ok || !data.valid) {
+              result = {
+                valid: false,
+                discountAmount: 0,
+                voucher: null,
+                errorMessage: data.error || 'Voucher validation failed on server.',
+              };
+            }
+          } catch (_err) {
+            // Offline fallback uses local store validation
+          }
         }
-      }
-      renderDashboardContent();
+
+        if (clientVoucherFeedback) {
+          clientVoucherFeedback.classList.remove('hidden');
+          if (result.valid) {
+            state.appliedVoucher = result.voucher;
+            const targetProdName =
+              result.voucher.furnitureName || result.voucher.productName || 'selected product';
+            const msg = `Voucher ${result.voucher.code} (${formatVoucherBenefitLabel(result.voucher)}) applied to "${targetProdName}" (-${usd(result.discountAmount)})!`;
+            clientVoucherFeedback.textContent = `✓ ${msg}`;
+            clientVoucherFeedback.className = 'text-xs font-semibold text-emerald-700';
+            showToast({
+              type: 'success',
+              title: 'Voucher Applied',
+              message: msg,
+            });
+          } else {
+            state.appliedVoucher = null;
+            clientVoucherFeedback.textContent = `✕ ${result.errorMessage}`;
+            clientVoucherFeedback.className = 'text-xs font-semibold text-rose-700';
+            showToast({
+              type: 'error',
+              title: 'Invalid or Expired Voucher',
+              message: result.errorMessage || 'Could not apply voucher.',
+            });
+          }
+        }
+        renderDashboardContent();
+      });
     });
   }
 
   // Customer Cart Place Order Button (with Backend/Store Authoritative Recalculation & Stock Deduction)
   const clientCheckoutBtn = document.getElementById('client-cart-checkout-btn');
   if (clientCheckoutBtn) {
-    clientCheckoutBtn.addEventListener('click', () => {
+    clientCheckoutBtn.addEventListener('click', async () => {
       if (state.cartItems.length === 0) return;
-      const requestedVoucherCode = state.appliedVoucher ? state.appliedVoucher.code : '';
-      const checkoutResult = verifyAndCreateOrder({
-        catalog: state.catalog,
-        vouchers: state.vouchers,
-        customerProfile: state.customerProfile,
-        sessionUser: state.sessionUser,
-        cartItems: state.cartItems,
-        voucherCode: requestedVoucherCode,
-      });
-
-      if (!checkoutResult.ok) {
-        state.appliedVoucher = null;
-        if (clientVoucherFeedback) {
-          clientVoucherFeedback.classList.remove('hidden');
-          clientVoucherFeedback.textContent = `✕ ${checkoutResult.errorMessage}`;
-          clientVoucherFeedback.className = 'text-xs font-semibold text-rose-700';
-        }
-        renderDashboardContent();
-        return;
-      }
-
-      const newOrder = checkoutResult.order;
-
-      // Persist deducted stock quantities & log Stock Out transactions
-      if (Array.isArray(checkoutResult.updatedCatalog)) {
-        const previousById = Object.fromEntries(
-          state.catalog.map((p) => [p.id, Math.max(0, Math.floor(Number(p.inStockCount ?? 0)))])
-        );
-        state.catalog = checkoutResult.updatedCatalog;
-        state.catalog.forEach((updatedProd) => {
-          const deducted = checkoutResult.requestedQtyByProduct?.[updatedProd.id] || 0;
-          if (deducted > 0) {
-            persistProductToStorage(updatedProd);
-            const prevStock = previousById[updatedProd.id] ?? updatedProd.inStockCount + deducted;
-            state.inventoryTransactions.unshift({
-              id: `inv-tx-${Date.now()}-${Math.floor(100 + Math.random() * 899)}`,
-              productId: updatedProd.id,
-              productName: updatedProd.name,
-              productSku: updatedProd.sku,
-              transactionType: 'Stock Out',
-              quantity: deducted,
-              previousStock: prevStock,
-              newStock: updatedProd.inStockCount,
-              purchaseCost: null,
-              reason: `Customer Order #${newOrder.orderNumber}`,
-              dateTime: `${new Date().toISOString().slice(0, 10)} ${new Date().toTimeString().slice(0, 5)}`,
-              adminName: `Storefront Checkout (${newOrder.clientName})`,
-            });
-          }
+      await withButtonLoading(clientCheckoutBtn, 'Placing order...', async () => {
+        const requestedVoucherCode = state.appliedVoucher ? state.appliedVoucher.code : '';
+        const checkoutResult = verifyAndCreateOrder({
+          catalog: state.catalog,
+          vouchers: state.vouchers,
+          customerProfile: state.customerProfile,
+          sessionUser: state.sessionUser,
+          cartItems: state.cartItems,
+          voucherCode: requestedVoucherCode,
         });
-        saveInventoryTransactionsToStorage();
-      }
 
-      state.orders.unshift(newOrder);
+        if (!checkoutResult.ok) {
+          state.appliedVoucher = null;
+          if (clientVoucherFeedback) {
+            clientVoucherFeedback.classList.remove('hidden');
+            clientVoucherFeedback.textContent = `✕ ${checkoutResult.errorMessage}`;
+            clientVoucherFeedback.className = 'text-xs font-semibold text-rose-700';
+          }
+          showToast({
+            type: 'error',
+            title: 'Unable to Place Order',
+            message: checkoutResult.errorMessage || 'Please review your cart and try again.',
+          });
+          renderDashboardContent();
+          return;
+        }
 
-      // Mark single-use voucher as Used
-      if (checkoutResult.validatedVoucher) {
-        const usedCode = String(checkoutResult.validatedVoucher.code || '').toUpperCase();
-        state.vouchers = state.vouchers.map((v) =>
-          String(v.code || '').toUpperCase() === usedCode ? { ...v, status: 'Used' } : v
-        );
-      }
+        const newOrder = checkoutResult.order;
 
-      state.cartItems = [];
-      state.appliedVoucher = null;
-      if (clientVoucherInput) clientVoucherInput.value = '';
-      if (clientVoucherFeedback) clientVoucherFeedback.classList.add('hidden');
-      saveCartToStorage();
-      syncDatabaseStore('sync_store');
-      showClientBanner(`Order #${newOrder.orderNumber} placed for ${usd(newOrder.totalAmount)}.`);
-      switchClientTab('orders');
-      renderDashboardContent();
+        // Persist deducted stock quantities & log Stock Out transactions
+        if (Array.isArray(checkoutResult.updatedCatalog)) {
+          const previousById = Object.fromEntries(
+            state.catalog.map((p) => [p.id, Math.max(0, Math.floor(Number(p.inStockCount ?? 0)))])
+          );
+          state.catalog = checkoutResult.updatedCatalog;
+          state.catalog.forEach((updatedProd) => {
+            const deducted = checkoutResult.requestedQtyByProduct?.[updatedProd.id] || 0;
+            if (deducted > 0) {
+              persistProductToStorage(updatedProd);
+              const prevStock = previousById[updatedProd.id] ?? updatedProd.inStockCount + deducted;
+              state.inventoryTransactions.unshift({
+                id: `inv-tx-${Date.now()}-${Math.floor(100 + Math.random() * 899)}`,
+                productId: updatedProd.id,
+                productName: updatedProd.name,
+                productSku: updatedProd.sku,
+                transactionType: 'Stock Out',
+                quantity: deducted,
+                previousStock: prevStock,
+                newStock: updatedProd.inStockCount,
+                purchaseCost: null,
+                reason: `Customer Order #${newOrder.orderNumber}`,
+                dateTime: `${new Date().toISOString().slice(0, 10)} ${new Date().toTimeString().slice(0, 5)}`,
+                adminName: `Storefront Checkout (${newOrder.clientName})`,
+              });
+            }
+          });
+          saveInventoryTransactionsToStorage();
+        }
+
+        state.orders.unshift(newOrder);
+
+        // Mark single-use voucher as Used
+        if (checkoutResult.validatedVoucher) {
+          const usedCode = String(checkoutResult.validatedVoucher.code || '').toUpperCase();
+          state.vouchers = state.vouchers.map((v) =>
+            String(v.code || '').toUpperCase() === usedCode ? { ...v, status: 'Used' } : v
+          );
+        }
+
+        state.cartItems = [];
+        state.appliedVoucher = null;
+        if (clientVoucherInput) clientVoucherInput.value = '';
+        if (clientVoucherFeedback) clientVoucherFeedback.classList.add('hidden');
+        saveCartToStorage();
+        syncDatabaseStore('sync_store');
+        showClientBanner(`Order #${newOrder.orderNumber} placed successfully for ${usd(newOrder.totalAmount)}.`);
+        switchClientTab('orders');
+        renderDashboardContent();
+      });
     });
   }
 
@@ -733,38 +826,46 @@ function initDashboardPage() {
     prodImageFileInput.addEventListener('change', (e) => {
       const file = e.target.files && e.target.files[0];
       if (!file) return;
+      const uploadLabel = document.querySelector('label[for="prod-image-file"]');
       const reader = new FileReader();
       reader.onload = async () => {
         const resultDataUrl = typeof reader.result === 'string' ? reader.result : '';
         if (!resultDataUrl) return;
-        if (prodImageInput) {
-          prodImageInput.value = resultDataUrl;
-        }
-        syncProductImagePreview(resultDataUrl);
-        if (prodErrorEl) prodErrorEl.classList.add('hidden');
-
-        try {
-          const response = await fetch('src/api.php?action=upload_product_image', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              action: 'upload_product_image',
-              fileName: file.name || 'product.jpg',
-              dataUrl: resultDataUrl,
-            }),
-          });
-          if (response.ok) {
-            const data = await response.json();
-            if (data && data.ok && data.imagePath) {
-              if (prodImageInput) {
-                prodImageInput.value = data.imagePath;
-              }
-              syncProductImagePreview(data.imagePath);
-            }
+        await withButtonLoading(uploadLabel, 'Uploading...', async () => {
+          if (prodImageInput) {
+            prodImageInput.value = resultDataUrl;
           }
-        } catch (_err) {
-          // Keep Data URL fallback if server file write is unavailable
-        }
+          syncProductImagePreview(resultDataUrl);
+          if (prodErrorEl) prodErrorEl.classList.add('hidden');
+
+          try {
+            const response = await fetch('src/api.php?action=upload_product_image', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'upload_product_image',
+                fileName: file.name || 'product.jpg',
+                dataUrl: resultDataUrl,
+              }),
+            });
+            if (response.ok) {
+              const data = await response.json();
+              if (data && data.ok && data.imagePath) {
+                if (prodImageInput) {
+                  prodImageInput.value = data.imagePath;
+                }
+                syncProductImagePreview(data.imagePath);
+              }
+            }
+          } catch (_err) {
+            // Keep Data URL fallback if server file write is unavailable
+          }
+          showToast({
+            type: 'success',
+            title: 'Product Image Uploaded',
+            message: `Uploaded "${file.name || 'product.jpg'}" for this product.`,
+          });
+        });
       };
       reader.readAsDataURL(file);
     });
@@ -1027,16 +1128,22 @@ function initDashboardPage() {
   if (prodForm) {
     prodForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+      clearFormErrors(prodForm);
       const editId = prodEditIdInput ? prodEditIdInput.value.trim() : '';
       const productType = prodTypeSelect ? prodTypeSelect.value : PRODUCT_TYPES.NORMAL;
-      const name = document.getElementById('prod-name').value.trim();
-      const sku = document.getElementById('prod-sku').value.trim().toUpperCase();
+      const nameInputEl = document.getElementById('prod-name');
+      const skuInputEl = document.getElementById('prod-sku');
+      const priceInputEl = document.getElementById('prod-price');
+      const stockInputEl = document.getElementById('prod-stock');
+
+      const name = nameInputEl.value.trim();
+      const sku = skuInputEl.value.trim().toUpperCase();
       const categoryId = document.getElementById('prod-category').value;
-      const price = Number(document.getElementById('prod-price').value);
+      const price = Number(priceInputEl.value);
       const discountPercent = Number(document.getElementById('prod-discount').value) || 0;
       const dimensions =
         document.getElementById('prod-dimensions').value.trim() || 'Standard Dimensions';
-      const stockVal = document.getElementById('prod-stock')?.value;
+      const stockVal = stockInputEl?.value;
       const minStockVal = document.getElementById('prod-min-stock')?.value;
       const inStockCount = stockVal !== undefined && stockVal !== '' ? Number(stockVal) : 4;
       const minStockLevel = minStockVal !== undefined && minStockVal !== '' ? Number(minStockVal) : 2;
@@ -1059,67 +1166,81 @@ function initDashboardPage() {
       });
 
       if (!validation.valid) {
+        const errMsg = validation.errorMessage || 'Please complete all required product fields.';
+        if (/name/i.test(errMsg)) setFieldError(nameInputEl, errMsg, true);
+        else if (/sku/i.test(errMsg)) setFieldError(skuInputEl, errMsg, true);
+        else if (/price/i.test(errMsg)) setFieldError(priceInputEl, errMsg, true);
+        else if (/stock/i.test(errMsg)) setFieldError(stockInputEl, errMsg, true);
+        else if (/image/i.test(errMsg)) setFieldError(prodImageInput, errMsg, true);
+
         if (prodErrorEl) {
-          prodErrorEl.textContent = validation.errorMessage;
+          prodErrorEl.textContent = errMsg;
           prodErrorEl.classList.remove('hidden');
         }
+        showToast({
+          type: 'error',
+          title: 'Product Validation Error',
+          message: errMsg,
+        });
         return;
       }
       if (prodErrorEl) prodErrorEl.classList.add('hidden');
 
-      const matchedConv = (state.messengerConversations || []).find(
-        (c) => c.id === messengerConversationId
-      );
-      const existingProduct = editId
-        ? state.catalog.find((item) => item.id === editId) || null
-        : null;
-
-      const savedProduct = buildProductRecord(
-        {
-          productType,
-          name,
-          sku,
-          categoryId,
-          price,
-          discountPercent,
-          dimensions,
-          inStockCount,
-          minStockLevel,
-          colorsRaw,
-          image,
-          messengerConversationId:
-            productType === 'customized' ? messengerConversationId || null : null,
-          messengerCustomerName:
-            productType === 'customized' ? matchedConv?.customerName || null : null,
-          messengerTopic: productType === 'customized' ? matchedConv?.topic || null : null,
-          customizationNotes: productType === 'customized' ? customizationNotes || null : null,
-        },
-        existingProduct
-      );
-
-      if (existingProduct) {
-        state.catalog = state.catalog.map((item) =>
-          item.id === existingProduct.id ? savedProduct : item
+      await withButtonLoading(prodSaveBtn, 'Saving changes...', async () => {
+        const matchedConv = (state.messengerConversations || []).find(
+          (c) => c.id === messengerConversationId
         );
-        persistProductToStorage(savedProduct);
-      } else {
-        state.catalog.unshift(savedProduct);
-        persistProductToStorage(savedProduct);
-      }
+        const existingProduct = editId
+          ? state.catalog.find((item) => item.id === editId) || null
+          : null;
 
-      const typeLabel =
-        savedProduct.productType === 'customized'
-          ? 'Customized Product (Messenger)'
-          : 'Normal Product';
+        const savedProduct = buildProductRecord(
+          {
+            productType,
+            name,
+            sku,
+            categoryId,
+            price,
+            discountPercent,
+            dimensions,
+            inStockCount,
+            minStockLevel,
+            colorsRaw,
+            image,
+            messengerConversationId:
+              productType === 'customized' ? messengerConversationId || null : null,
+            messengerCustomerName:
+              productType === 'customized' ? matchedConv?.customerName || null : null,
+            messengerTopic: productType === 'customized' ? matchedConv?.topic || null : null,
+            customizationNotes: productType === 'customized' ? customizationNotes || null : null,
+          },
+          existingProduct
+        );
 
-      resetProductFormForCreate('standard');
-      switchAdminTab('catalog');
-      showAdminBanner(
-        existingProduct
-          ? `Updated ${typeLabel} "${savedProduct.name}" (${savedProduct.sku}) — synced live with Home Page & Customer Dashboard.`
-          : `Added ${typeLabel} "${savedProduct.name}" (${savedProduct.sku}) to the public Shop catalog & Customer Dashboard.`
-      );
-      renderDashboardContent();
+        if (existingProduct) {
+          state.catalog = state.catalog.map((item) =>
+            item.id === existingProduct.id ? savedProduct : item
+          );
+          persistProductToStorage(savedProduct);
+        } else {
+          state.catalog.unshift(savedProduct);
+          persistProductToStorage(savedProduct);
+        }
+
+        const typeLabel =
+          savedProduct.productType === 'customized'
+            ? 'Customized Product (Messenger)'
+            : 'Normal Product';
+
+        resetProductFormForCreate('standard');
+        switchAdminTab('catalog');
+        showAdminBanner(
+          existingProduct
+            ? `Changes saved successfully: Updated ${typeLabel} "${savedProduct.name}" (${savedProduct.sku}).`
+            : `Changes saved successfully: Added ${typeLabel} "${savedProduct.name}" (${savedProduct.sku}) to the store catalog.`
+        );
+        renderDashboardContent();
+      });
     });
   }
 
@@ -1293,10 +1414,15 @@ function initDashboardPage() {
   if (vchForm) {
     vchForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const customerEmail = document.getElementById('vch-email')?.value.trim() || '';
+      clearFormErrors(vchForm);
+      const emailInputEl = document.getElementById('vch-email');
+      const codeInputEl = document.getElementById('vch-code');
+      const discountInputEl = document.getElementById('vch-discount');
+
+      const customerEmail = emailInputEl?.value.trim() || '';
       const furnitureId = document.getElementById('vch-product')?.value || '';
-      const code = document.getElementById('vch-code')?.value.trim().toUpperCase() || '';
-      const rawDiscountVal = Number(document.getElementById('vch-discount')?.value);
+      const code = codeInputEl?.value.trim().toUpperCase() || '';
+      const rawDiscountVal = Number(discountInputEl?.value);
       const expirationMethod = vchExpMethodInput ? vchExpMethodInput.value : 'duration';
       const durationValue = Number(vchDurationValueInput?.value);
       const durationUnit = vchDurationUnitSelect?.value || 'hours';
@@ -1332,21 +1458,26 @@ function initDashboardPage() {
       );
 
       if (!localCheck.ok) {
+        const errMsg = localCheck.errorMessage || 'Please check the voucher fields.';
+        if (/email/i.test(errMsg)) setFieldError(emailInputEl, errMsg, true);
+        else if (/code/i.test(errMsg)) setFieldError(codeInputEl, errMsg, true);
+        else if (/discount|amount|price/i.test(errMsg)) setFieldError(discountInputEl, errMsg, true);
+
         if (vchErrorEl) {
-          vchErrorEl.textContent = localCheck.errorMessage;
+          vchErrorEl.textContent = errMsg;
           vchErrorEl.classList.remove('hidden');
         }
+        showToast({
+          type: 'error',
+          title: 'Unable to Create Voucher',
+          message: errMsg,
+        });
         return;
       }
 
       if (vchErrorEl) vchErrorEl.classList.add('hidden');
 
-      if (vchSubmitBtn) {
-        vchSubmitBtn.disabled = true;
-        vchSubmitBtn.textContent = 'Creating Voucher...';
-      }
-
-      try {
+      await withButtonLoading(vchSubmitBtn, 'Creating voucher...', async () => {
         let createdVoucher = localCheck.voucher;
         try {
           const response = await fetch(API_ENDPOINT, {
@@ -1376,6 +1507,11 @@ function initDashboardPage() {
               vchErrorEl.textContent = err.message;
               vchErrorEl.classList.remove('hidden');
             }
+            showToast({
+              type: 'error',
+              title: 'Unable to Create Voucher',
+              message: err.message,
+            });
             return;
           }
           state.vouchers = [createdVoucher, ...state.vouchers];
@@ -1386,15 +1522,10 @@ function initDashboardPage() {
         if (codeEl) codeEl.value = '';
         syncVoucherExpirationPreview();
         showAdminBanner(
-          `Voucher ${createdVoucher.code} (${usd(createdVoucher.discountAmount)} OFF "${createdVoucher.furnitureName}") issued to ${createdVoucher.customerEmail}.`
+          `Voucher created successfully: ${createdVoucher.code} (${usd(createdVoucher.discountAmount)} OFF "${createdVoucher.furnitureName}") issued to ${createdVoucher.customerEmail}.`
         );
         renderDashboardContent();
-      } finally {
-        if (vchSubmitBtn) {
-          vchSubmitBtn.disabled = false;
-          vchSubmitBtn.textContent = 'Create Voucher';
-        }
-      }
+      });
     });
   }
 
@@ -1452,42 +1583,76 @@ function openAdminConfirmModal({
   message,
   confirmLabel = 'Confirm',
   confirmVariant = 'danger',
+  loadingLabel = 'Processing...',
   onConfirm,
   onCancel = null,
 }) {
-  const modal = document.getElementById('admin-confirm-modal');
-  const titleEl = document.getElementById('admin-confirm-title');
-  const msgEl = document.getElementById('admin-confirm-message');
-  const acceptBtn = document.getElementById('admin-confirm-accept');
-  if (!modal) {
-    if (typeof onConfirm === 'function') onConfirm();
-    return;
-  }
-  if (titleEl) titleEl.textContent = title || 'Confirm Action';
-  if (msgEl) msgEl.textContent = message || 'Are you sure you want to proceed?';
-  if (acceptBtn) {
-    acceptBtn.textContent = confirmLabel;
-    acceptBtn.className =
-      confirmVariant === 'primary'
-        ? 'admin-btn admin-btn-primary'
-        : 'admin-btn admin-btn-danger';
-  }
-  pendingConfirmAction = onConfirm;
-  pendingCancelAction = onCancel;
-  modal.classList.remove('hidden');
+  return openConfirmDialog({
+    title: title || 'Confirm Action',
+    description: message || 'Are you sure you want to proceed?',
+    confirmLabel,
+    cancelLabel: 'Cancel',
+    loadingLabel,
+    variant: confirmVariant === 'primary' ? 'primary' : 'danger',
+    icon: confirmVariant === 'primary' ? 'check' : 'warning',
+    onConfirm,
+    onCancel,
+  });
 }
 
-function showClientBanner(msg) {
+function showClientBanner(msg, explicitType = '', explicitTitle = '') {
+  const text = String(msg || '').trim();
+  const isErr = /out of stock|cannot|unable|invalid|failed|no longer usable/i.test(text);
+  const isWarn = /only .* available|limit|pending/i.test(text);
+  const isInfo = /^removed|copied/i.test(text);
+  const toastType =
+    explicitType || (isErr ? 'error' : isWarn ? 'warning' : isInfo ? 'info' : 'success');
+  const toastTitle =
+    explicitTitle ||
+    (toastType === 'error'
+      ? 'Action Could Not Be Completed'
+      : toastType === 'warning'
+      ? 'Stock & Order Notice'
+      : toastType === 'info'
+      ? 'Account Updated'
+      : 'Success');
+
+  showToast({
+    type: toastType,
+    title: toastTitle,
+    message: text,
+  });
+
   const banner = document.getElementById('client-action-banner');
   if (!banner) return;
-  banner.textContent = `✓ ${msg}`;
+  banner.textContent = `${toastType === 'error' ? '✕' : '✓'} ${text}`;
   banner.classList.remove('hidden');
   setTimeout(() => {
     banner.classList.add('hidden');
   }, 3500);
 }
 
-function showAdminBanner(msg, isError = false) {
+function showAdminBanner(msg, isError = false, explicitTitle = '') {
+  const text = String(msg || '').trim();
+  const isInfo = /downloaded|exported|copied/i.test(text);
+  const isWarn = /low stock|declined|revoked/i.test(text);
+  const toastType = isError ? 'error' : isInfo ? 'info' : isWarn ? 'warning' : 'success';
+  const toastTitle =
+    explicitTitle ||
+    (isError
+      ? 'Unable to Complete Request'
+      : isInfo
+      ? 'Report & Clipboard Notice'
+      : isWarn
+      ? 'Admin Notice'
+      : 'Changes Saved Successfully');
+
+  showToast({
+    type: toastType,
+    title: toastTitle,
+    message: text,
+  });
+
   const banner = document.getElementById('admin-status-banner');
   if (!banner) return;
   if (isError) {
@@ -1829,71 +1994,79 @@ function renderDashboardContent() {
 
       const custFormEl = document.getElementById('client-custom-commission-form');
       if (custFormEl) {
-        custFormEl.addEventListener('submit', (e) => {
+        custFormEl.addEventListener('submit', async (e) => {
           e.preventDefault();
-          const productId = document.getElementById('cust-ord-product')?.value || '';
-          const materialId = document.getElementById('cust-ord-material')?.value || '';
-          const colorFinish = document.getElementById('cust-ord-finish')?.value || 'Natural Oil';
-          const lengthCm = document.getElementById('cust-ord-length')?.value || 240;
-          const widthCm = document.getElementById('cust-ord-width')?.value || 100;
-          const heightCm = document.getElementById('cust-ord-height')?.value || 75;
-          const notes = document.getElementById('cust-ord-notes')?.value || '';
+          const submitBtn = custFormEl.querySelector('button[type="submit"]');
+          await withButtonLoading(submitBtn, 'Placing order...', async () => {
+            const productId = document.getElementById('cust-ord-product')?.value || '';
+            const materialId = document.getElementById('cust-ord-material')?.value || '';
+            const colorFinish = document.getElementById('cust-ord-finish')?.value || 'Natural Oil';
+            const lengthCm = document.getElementById('cust-ord-length')?.value || 240;
+            const widthCm = document.getElementById('cust-ord-width')?.value || 100;
+            const heightCm = document.getElementById('cust-ord-height')?.value || 75;
+            const notes = document.getElementById('cust-ord-notes')?.value || '';
 
-          const res = createCustomOrderRequest({
-            catalog: state.catalog,
-            materials: state.materials,
-            customerProfile: {
-              name: state.customerProfile.name,
-              email: userEmail,
-            },
-            customInput: {
-              productId,
-              materialId,
-              lengthCm,
-              widthCm,
-              heightCm,
-              colorFinish,
-              notes,
-              extraCost,
-              materialQtyUsed: 2,
-            },
-          });
+            const res = createCustomOrderRequest({
+              catalog: state.catalog,
+              materials: state.materials,
+              customerProfile: {
+                name: state.customerProfile.name,
+                email: userEmail,
+              },
+              customInput: {
+                productId,
+                materialId,
+                lengthCm,
+                widthCm,
+                heightCm,
+                colorFinish,
+                notes,
+                extraCost,
+                materialQtyUsed: 2,
+              },
+            });
 
-          const errEl = document.getElementById('client-custom-commission-error');
-          if (!res.ok) {
-            if (errEl) {
-              errEl.textContent = res.errorMessage;
-              errEl.classList.remove('hidden');
+            const errEl = document.getElementById('client-custom-commission-error');
+            if (!res.ok) {
+              if (errEl) {
+                errEl.textContent = res.errorMessage;
+                errEl.classList.remove('hidden');
+              }
+              showToast({
+                type: 'error',
+                title: 'Unable to Submit Custom Order',
+                message: res.errorMessage || 'Please review your custom dimensions and material selection.',
+              });
+              return;
             }
-            return;
-          }
 
-          // Deduct allocated raw material from Workshop Material Inventory
-          const matMove = applyMaterialStockMovement({
-            materials: state.materials,
-            adminName: `${state.customerProfile.name} (Custom Order #${res.order.orderNumber})`,
-            movementInput: {
-              materialId,
-              transactionType: 'Stock Out',
-              quantity: 2,
-              reason: `Allocated to Custom Order #${res.order.orderNumber} (${res.order.furnitureName})`,
-              date: new Date().toISOString().slice(0, 10),
-            },
+            // Deduct allocated raw material from Workshop Material Inventory
+            const matMove = applyMaterialStockMovement({
+              materials: state.materials,
+              adminName: `${state.customerProfile.name} (Custom Order #${res.order.orderNumber})`,
+              movementInput: {
+                materialId,
+                transactionType: 'Stock Out',
+                quantity: 2,
+                reason: `Allocated to Custom Order #${res.order.orderNumber} (${res.order.furnitureName})`,
+                date: new Date().toISOString().slice(0, 10),
+              },
+            });
+            if (matMove.ok) {
+              state.materials = matMove.updatedMaterials;
+              saveMaterialsToStorage();
+              state.inventoryTransactions.unshift(matMove.transaction);
+              saveInventoryTransactionsToStorage();
+            }
+
+            state.orders.unshift(res.order);
+            saveOrdersToStorage();
+            state.clientCustomOrderOpen = false;
+            showClientBanner(
+              `Order placed successfully! Custom Commission #${res.order.orderNumber} submitted with material "${res.order.materialName}".`
+            );
+            renderDashboardContent();
           });
-          if (matMove.ok) {
-            state.materials = matMove.updatedMaterials;
-            saveMaterialsToStorage();
-            state.inventoryTransactions.unshift(matMove.transaction);
-            saveInventoryTransactionsToStorage();
-          }
-
-          state.orders.unshift(res.order);
-          saveOrdersToStorage();
-          state.clientCustomOrderOpen = false;
-          showClientBanner(
-            `Custom Commission #${res.order.orderNumber} submitted! Material "${res.order.materialName}" allocated for workshop production.`
-          );
-          renderDashboardContent();
         });
       }
     }
@@ -2073,41 +2246,70 @@ function renderDashboardContent() {
     friendlyOrdersEl.querySelectorAll('[data-client-pay-order]').forEach((btn) => {
       btn.addEventListener('click', () => {
         const orderNumber = btn.getAttribute('data-client-pay-order') || '';
-        const res = recordCustomerOrderPayment({
-          orders: state.orders,
-          orderNumber,
-          paymentMethod: 'Card',
+        const targetOrd = state.orders.find((o) => o.orderNumber === orderNumber);
+        const remBal = targetOrd
+          ? Math.max(0, Number(targetOrd.totalAmount || 0) - Number(targetOrd.depositPaid ?? targetOrd.totalAmount ?? 0))
+          : 0;
+        openConfirmDialog({
+          title: `Confirm Payment for Order #${orderNumber}?`,
+          description: `You are about to settle the remaining balance of ${usd(remBal)} for "${targetOrd?.furnitureName || 'your furniture order'}".`,
+          confirmLabel: 'Confirm Payment',
+          cancelLabel: 'Cancel',
+          loadingLabel: 'Processing payment...',
+          variant: 'primary',
+          icon: 'check',
+          onConfirm: () => {
+            const res = recordCustomerOrderPayment({
+              orders: state.orders,
+              orderNumber,
+              paymentMethod: 'Card',
+            });
+            if (!res.ok) {
+              showClientBanner(res.errorMessage || 'Unable to process payment.', 'error');
+              return;
+            }
+            state.orders = res.updatedOrders;
+            saveOrdersToStorage();
+            showClientBanner(
+              `Paid remaining balance of ${usd(res.amountPaid)} for Order #${orderNumber}. Synced with Transactions & Admin Orders.`
+            );
+            renderDashboardContent();
+          },
         });
-        if (!res.ok) {
-          showClientBanner(res.errorMessage || 'Unable to process payment.');
-          return;
-        }
-        state.orders = res.updatedOrders;
-        saveOrdersToStorage();
-        showClientBanner(
-          `Paid remaining balance of ${usd(res.amountPaid)} for Order #${orderNumber}. Synced with Transactions & Admin Orders.`
-        );
-        renderDashboardContent();
       });
     });
 
     friendlyOrdersEl.querySelectorAll('[data-client-cancel-order]').forEach((btn) => {
       btn.addEventListener('click', () => {
         const orderNumber = btn.getAttribute('data-client-cancel-order') || '';
-        const res = requestOrderCancellation({
-          orders: state.orders,
-          orderNumber,
+        const targetOrd = state.orders.find((o) => o.orderNumber === orderNumber);
+        openConfirmDialog({
+          title: `Cancel Order #${orderNumber}?`,
+          description: `Are you sure you want to request cancellation for "${targetOrd?.furnitureName || `Order #${orderNumber}`}"? Your request will be sent to the Admin for review.`,
+          confirmLabel: 'Yes, Request Cancellation',
+          cancelLabel: 'Keep Order',
+          loadingLabel: 'Sending request...',
+          variant: 'danger',
+          icon: 'warning',
+          onConfirm: () => {
+            const res = requestOrderCancellation({
+              orders: state.orders,
+              orderNumber,
+            });
+            if (!res.ok) {
+              showClientBanner(res.errorMessage || 'Unable to request cancellation.', 'error');
+              return;
+            }
+            state.orders = res.updatedOrders;
+            saveOrdersToStorage();
+            showClientBanner(
+              `Cancellation request for Order #${orderNumber} has been sent to the Admin for approval.`,
+              'warning',
+              'Cancellation Request Sent'
+            );
+            renderDashboardContent();
+          },
         });
-        if (!res.ok) {
-          showClientBanner(res.errorMessage || 'Unable to request cancellation.');
-          return;
-        }
-        state.orders = res.updatedOrders;
-        saveOrdersToStorage();
-        showClientBanner(
-          `Cancellation request for Order #${orderNumber} has been sent to the Admin for approval.`
-        );
-        renderDashboardContent();
       });
     });
   }
@@ -2297,10 +2499,21 @@ function renderDashboardContent() {
         btn.addEventListener('click', () => {
           const idx = Number(btn.getAttribute('data-client-cart-remove'));
           const removed = state.cartItems[idx];
-          state.cartItems.splice(idx, 1);
-          saveCartToStorage();
-          showClientBanner(`Removed "${removed ? removed.product.name : 'Item'}" from your Cart.`);
-          renderDashboardContent();
+          if (!removed) return;
+          openConfirmDialog({
+            title: 'Remove Item from Cart?',
+            description: `Are you sure you want to remove "${removed.product.name}" (${removed.finish}) from your shopping cart?`,
+            confirmLabel: 'Remove Item',
+            cancelLabel: 'Keep in Cart',
+            variant: 'danger',
+            icon: 'warning',
+            onConfirm: () => {
+              state.cartItems.splice(idx, 1);
+              saveCartToStorage();
+              showClientBanner(`Removed "${removed.product.name}" from your Cart.`, 'info', 'Cart Updated');
+              renderDashboardContent();
+            },
+          });
         });
       });
 
@@ -4146,10 +4359,12 @@ function renderDashboardContent() {
 
     const movementForm = document.getElementById('admin-stock-movement-form');
     if (movementForm) {
-      movementForm.addEventListener('submit', (e) => {
+      movementForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        clearFormErrors(movementForm);
+        const qtyInputEl = document.getElementById('inv-move-qty');
         const materialId = document.getElementById('inv-move-product')?.value || '';
-        const quantity = Number(document.getElementById('inv-move-qty')?.value || 0);
+        const quantity = Number(qtyInputEl?.value || 0);
         const date = document.getElementById('inv-move-date')?.value || state.adminMovementDate;
         const purchaseCost = document.getElementById('inv-move-cost')?.value ?? '';
         const reasonSel =
@@ -4166,39 +4381,48 @@ function renderDashboardContent() {
           ? `${state.sessionUser.name} (Admin)`
           : 'Lillia Mercier (Business Owner)';
 
-        const result = applyMaterialStockMovement({
-          materials: state.materials,
-          adminName,
-          movementInput: {
-            materialId,
-            transactionType: activeMovementMode,
-            quantity,
-            purchaseCost,
-            reason: finalReason,
-            date,
-          },
-        });
+        const submitBtn = movementForm.querySelector('button[type="submit"]');
+        await withButtonLoading(submitBtn, 'Updating stock...', async () => {
+          const result = applyMaterialStockMovement({
+            materials: state.materials,
+            adminName,
+            movementInput: {
+              materialId,
+              transactionType: activeMovementMode,
+              quantity,
+              purchaseCost,
+              reason: finalReason,
+              date,
+            },
+          });
 
-        const feedbackEl = document.getElementById('admin-stock-movement-feedback');
-        if (!result.ok) {
-          if (feedbackEl) {
-            feedbackEl.textContent = result.errorMessage;
-            feedbackEl.className =
-              'text-xs font-semibold p-2.5 rounded-lg border bg-rose-50 border-rose-200 text-rose-700 block';
+          const feedbackEl = document.getElementById('admin-stock-movement-feedback');
+          if (!result.ok) {
+            if (qtyInputEl) setFieldError(qtyInputEl, result.errorMessage, true);
+            if (feedbackEl) {
+              feedbackEl.textContent = result.errorMessage;
+              feedbackEl.className =
+                'text-xs font-semibold p-2.5 rounded-lg border bg-rose-50 border-rose-200 text-rose-700 block';
+            }
+            showToast({
+              type: 'error',
+              title: 'Insufficient Stock / Invalid Movement',
+              message: result.errorMessage,
+            });
+            return;
           }
-          return;
-        }
 
-        state.materials = result.updatedMaterials;
-        saveMaterialsToStorage();
-        state.inventoryTransactions.unshift(result.transaction);
-        saveInventoryTransactionsToStorage();
-        state.adminMovementFormOpen = false;
+          state.materials = result.updatedMaterials;
+          saveMaterialsToStorage();
+          state.inventoryTransactions.unshift(result.transaction);
+          saveInventoryTransactionsToStorage();
+          state.adminMovementFormOpen = false;
 
-        showAdminBanner(
-          `${result.transaction.transactionType === 'Stock In' ? 'Added stock' : 'Used stock'}: "${result.transaction.materialName}" updated from ${result.transaction.previousStock} ${result.transaction.unit} to ${result.transaction.newStock} ${result.transaction.unit}.`
-        );
-        renderDashboardContent();
+          showAdminBanner(
+            `${result.transaction.transactionType === 'Stock In' ? 'Added stock' : 'Used stock'}: "${result.transaction.materialName}" updated from ${result.transaction.previousStock} ${result.transaction.unit} to ${result.transaction.newStock} ${result.transaction.unit}.`
+          );
+          renderDashboardContent();
+        });
       });
     }
 
@@ -4213,13 +4437,19 @@ function renderDashboardContent() {
 
     const matForm = document.getElementById('admin-material-form');
     if (matForm) {
-      matForm.addEventListener('submit', (e) => {
+      matForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const name = document.getElementById('mat-name')?.value.trim() || '';
+        clearFormErrors(matForm);
+        const nameInputEl = document.getElementById('mat-name');
+        const unitInputEl = document.getElementById('mat-unit');
+        const costInputEl = document.getElementById('mat-cost');
+        const stockInputEl = document.getElementById('mat-stock');
+
+        const name = nameInputEl?.value.trim() || '';
         const materialType = document.getElementById('mat-type')?.value || 'Hardwood Timber';
-        const unit = document.getElementById('mat-unit')?.value.trim() || 'bd ft';
-        const unitCost = Number(document.getElementById('mat-cost')?.value ?? 0);
-        const stockQuantity = Number(document.getElementById('mat-stock')?.value ?? 0);
+        const unit = unitInputEl?.value.trim() || 'bd ft';
+        const unitCost = Number(costInputEl?.value ?? 0);
+        const stockQuantity = Number(stockInputEl?.value ?? 0);
         const minStockLevel = Number(document.getElementById('mat-min-stock')?.value ?? 10);
 
         const validation = validateMaterialInput({
@@ -4230,45 +4460,59 @@ function renderDashboardContent() {
         });
         const feedbackEl = document.getElementById('admin-material-form-feedback');
         if (!validation.valid) {
+          const errMsg = validation.errorMessage || 'Please complete all required material fields.';
+          if (/name/i.test(errMsg)) setFieldError(nameInputEl, errMsg, true);
+          else if (/unit/i.test(errMsg)) setFieldError(unitInputEl, errMsg, true);
+          else if (/cost/i.test(errMsg)) setFieldError(costInputEl, errMsg, true);
+          else if (/stock/i.test(errMsg)) setFieldError(stockInputEl, errMsg, true);
+
           if (feedbackEl) {
-            feedbackEl.textContent = validation.errorMessage;
+            feedbackEl.textContent = errMsg;
             feedbackEl.className =
               'text-xs font-semibold p-2.5 rounded-lg border bg-rose-50 border-rose-200 text-rose-700 block';
           }
+          showToast({
+            type: 'error',
+            title: 'Material Validation Error',
+            message: errMsg,
+          });
           return;
         }
 
-        const existingMat = state.adminEditingMaterialId
-          ? state.materials.find((m) => m.id === state.adminEditingMaterialId) || null
-          : null;
-        const savedMat = buildMaterialRecord(
-          {
-            name,
-            materialType,
-            unit,
-            unitCost,
-            stockQuantity,
-            minStockLevel,
-          },
-          existingMat
-        );
-
-        if (existingMat) {
-          state.materials = state.materials.map((m) => (m.id === existingMat.id ? savedMat : m));
-          showAdminBanner(
-            `Updated material "${savedMat.name}" (${savedMat.stockQuantity} ${savedMat.unit} available).`
+        const submitBtn = matForm.querySelector('button[type="submit"]');
+        await withButtonLoading(submitBtn, 'Saving changes...', async () => {
+          const existingMat = state.adminEditingMaterialId
+            ? state.materials.find((m) => m.id === state.adminEditingMaterialId) || null
+            : null;
+          const savedMat = buildMaterialRecord(
+            {
+              name,
+              materialType,
+              unit,
+              unitCost,
+              stockQuantity,
+              minStockLevel,
+            },
+            existingMat
           );
-        } else {
-          state.materials.unshift(savedMat);
-          showAdminBanner(
-            `Added new material "${savedMat.name}" (${savedMat.stockQuantity} ${savedMat.unit} available).`
-          );
-        }
 
-        saveMaterialsToStorage();
-        state.adminEditingMaterialId = '';
-        state.adminMaterialFormOpen = false;
-        renderDashboardContent();
+          if (existingMat) {
+            state.materials = state.materials.map((m) => (m.id === existingMat.id ? savedMat : m));
+            showAdminBanner(
+              `Changes saved successfully: Updated material "${savedMat.name}" (${savedMat.stockQuantity} ${savedMat.unit} available).`
+            );
+          } else {
+            state.materials.unshift(savedMat);
+            showAdminBanner(
+              `Changes saved successfully: Added new material "${savedMat.name}" (${savedMat.stockQuantity} ${savedMat.unit} available).`
+            );
+          }
+
+          saveMaterialsToStorage();
+          state.adminEditingMaterialId = '';
+          state.adminMaterialFormOpen = false;
+          renderDashboardContent();
+        });
       });
     }
 
@@ -4976,34 +5220,53 @@ function renderDashboardContent() {
     adminOrdersEl.querySelectorAll('[data-admin-approve-cancel]').forEach((btn) => {
       btn.addEventListener('click', () => {
         const orderNumber = btn.getAttribute('data-admin-approve-cancel') || '';
-        const res = resolveOrderCancellationRequest({
-          orders: state.orders,
-          orderNumber,
-          decision: 'approve',
+        const ord = state.orders.find((o) => o.orderNumber === orderNumber);
+        openAdminConfirmModal({
+          title: `Cancel Customer Order #${orderNumber}?`,
+          message: `Are you sure you want to approve the cancellation request for Order #${orderNumber}${ord ? ` (${ord.furnitureName} for ${ord.clientName})` : ''}? The order will be marked as Cancelled.`,
+          confirmLabel: 'Approve Cancellation',
+          confirmVariant: 'danger',
+          loadingLabel: 'Cancelling order...',
+          onConfirm: () => {
+            const res = resolveOrderCancellationRequest({
+              orders: state.orders,
+              orderNumber,
+              decision: 'approve',
+            });
+            if (res.ok) {
+              state.orders = res.updatedOrders;
+              saveOrdersToStorage();
+              showAdminBanner(`Approved cancellation for Order #${orderNumber}. The order is now marked as Cancelled.`);
+              renderDashboardContent();
+            }
+          },
         });
-        if (res.ok) {
-          state.orders = res.updatedOrders;
-          saveOrdersToStorage();
-          showAdminBanner(`Approved cancellation for Order #${orderNumber}. The order is now marked as Cancelled.`);
-          renderDashboardContent();
-        }
       });
     });
 
     adminOrdersEl.querySelectorAll('[data-admin-decline-cancel]').forEach((btn) => {
       btn.addEventListener('click', () => {
         const orderNumber = btn.getAttribute('data-admin-decline-cancel') || '';
-        const res = resolveOrderCancellationRequest({
-          orders: state.orders,
-          orderNumber,
-          decision: 'decline',
+        openAdminConfirmModal({
+          title: `Decline Cancellation for Order #${orderNumber}?`,
+          message: `Are you sure you want to decline the customer's cancellation request for Order #${orderNumber}? The order will remain active in production.`,
+          confirmLabel: 'Decline Request',
+          confirmVariant: 'primary',
+          loadingLabel: 'Updating order...',
+          onConfirm: () => {
+            const res = resolveOrderCancellationRequest({
+              orders: state.orders,
+              orderNumber,
+              decision: 'decline',
+            });
+            if (res.ok) {
+              state.orders = res.updatedOrders;
+              saveOrdersToStorage();
+              showAdminBanner(`Declined cancellation request for Order #${orderNumber}. The order remains active.`);
+              renderDashboardContent();
+            }
+          },
         });
-        if (res.ok) {
-          state.orders = res.updatedOrders;
-          saveOrdersToStorage();
-          showAdminBanner(`Declined cancellation request for Order #${orderNumber}. The order remains active.`);
-          renderDashboardContent();
-        }
       });
     });
   }
@@ -6899,50 +7162,69 @@ function renderAdminAnalyticsSection() {
   // Bind Export PDF Report
   const pdfBtn = document.getElementById('analytics-export-pdf-btn');
   if (pdfBtn) {
-    pdfBtn.addEventListener('click', () => {
-      const pdfBytes = buildAnalyticsPdfBytes(report);
-      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      const slug = String(report.period.label || 'monthly-report')
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-');
-      a.href = url;
-      a.download = `lillia-rowena-analytics-${slug}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1500);
-      showAdminBanner(`Downloaded PDF Report for ${report.period.label}.`);
+    pdfBtn.addEventListener('click', async () => {
+      await withButtonLoading(pdfBtn, 'Generating report...', () => {
+        const pdfBytes = buildAnalyticsPdfBytes(report);
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const slug = String(report.period.label || 'monthly-report')
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-');
+        a.href = url;
+        a.download = `lillia-rowena-analytics-${slug}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1500);
+        showAdminBanner(
+          `Your report is ready to download. Downloaded PDF Report for ${report.period.label}.`,
+          false,
+          'Your Report Is Ready to Download'
+        );
+      });
     });
   }
 
   // Bind Export CSV Report
   const csvBtn = document.getElementById('analytics-export-csv-btn');
   if (csvBtn) {
-    csvBtn.addEventListener('click', () => {
-      const csvText = buildAnalyticsCsvContent(report);
-      const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      const slug = String(report.period.label || 'monthly-report')
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-');
-      a.href = url;
-      a.download = `lillia-rowena-analytics-${slug}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1500);
-      showAdminBanner(`Exported CSV Report for ${report.period.label}.`);
+    csvBtn.addEventListener('click', async () => {
+      await withButtonLoading(csvBtn, 'Generating report...', () => {
+        const csvText = buildAnalyticsCsvContent(report);
+        const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const slug = String(report.period.label || 'monthly-report')
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-');
+        a.href = url;
+        a.download = `lillia-rowena-analytics-${slug}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1500);
+        showAdminBanner(
+          `Your report is ready to download. Exported CSV Report for ${report.period.label}.`,
+          false,
+          'Your Report Is Ready to Download'
+        );
+      });
     });
   }
 
   // Bind Printable Report
   const printBtn = document.getElementById('analytics-print-report-btn');
   if (printBtn) {
-    printBtn.addEventListener('click', () => {
-      window.print();
+    printBtn.addEventListener('click', async () => {
+      await withButtonLoading(printBtn, 'Generating report...', () => {
+        showToast({
+          type: 'info',
+          title: 'Your Report Is Ready to Print',
+          message: `Opening printable report view for ${report.period.label}.`,
+        });
+        window.print();
+      });
     });
   }
 }

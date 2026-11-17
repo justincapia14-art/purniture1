@@ -3129,5 +3129,394 @@ body.modal-open {
   }
 }
 
+/* ==========================================================================
+   GLOBAL UI/UX FEEDBACK, SPINNERS, TOASTS, CONFIRMATION MODALS & SKELETONS
+   ========================================================================== */
+@keyframes lr-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes lr-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.lr-btn-is-loading {
+  cursor: wait !important;
+  opacity: 0.92;
+}
+
+.lr-btn-spinner-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.lr-btn-spinner {
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 9999px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  display: inline-block;
+  animation: lr-spin 0.65s linear infinite;
+  flex-shrink: 0;
+}
+
+.lr-skeleton {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: lr-shimmer 1.4s ease-in-out infinite;
+}
+
+.has-error,
+.admin-input.has-error,
+.admin-select.has-error {
+  border-color: #e11d48 !important;
+  background-color: #fff1f2 !important;
+}
+
+.lr-field-error {
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #be123c;
+  line-height: 1.35;
+}
+
+/* Toast Notification Stack */
+.lr-toast-container {
+  position: fixed;
+  top: 1.25rem;
+  right: 1.25rem;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  max-width: 24rem;
+  width: calc(100vw - 1.5rem);
+  pointer-events: none;
+}
+
+@media (max-width: 639px) {
+  .lr-toast-container {
+    top: 0.75rem;
+    right: 0.75rem;
+    left: 0.75rem;
+    max-width: none;
+    width: auto;
+  }
+}
+
+.lr-toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border-radius: 0.875rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 14px 30px -8px rgba(15, 23, 42, 0.16);
+  opacity: 0;
+  transform: translateY(-8px) scale(0.98);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.lr-toast.is-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.lr-toast.is-leaving {
+  opacity: 0;
+  transform: translateY(-6px) scale(0.98);
+}
+
+.lr-toast-success {
+  border-left: 4px solid #10b981;
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.lr-toast-error {
+  border-left: 4px solid #e11d48;
+  background: #fff1f2;
+  border-color: #fecdd3;
+}
+
+.lr-toast-warning {
+  border-left: 4px solid #f59e0b;
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.lr-toast-info {
+  border-left: 4px solid #0095ff;
+  background: #f0f9ff;
+  border-color: #bae6fd;
+}
+
+.lr-toast-icon {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.lr-toast-content {
+  flex: 1 1 0%;
+  min-width: 0;
+}
+
+.lr-toast-title {
+  margin: 0;
+  font-size: 0.825rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.3;
+}
+
+.lr-toast-desc {
+  margin: 0.2rem 0 0;
+  font-size: 0.775rem;
+  font-weight: 500;
+  color: #334155;
+  line-height: 1.4;
+}
+
+.lr-toast-close {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 700;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.lr-toast-close:hover {
+  background: rgba(15, 23, 42, 0.06);
+  color: #0f172a;
+}
+
+/* Global Confirmation Dialog Overlay */
+.lr-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9990;
+  background: rgba(15, 23, 42, 0.52);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.lr-confirm-overlay.hidden {
+  display: none !important;
+}
+
+.lr-confirm-card {
+  width: 100%;
+  max-width: 26rem;
+  background: #ffffff;
+  border: 1px solid #bae6fd;
+  border-radius: 1.125rem;
+  padding: 1.5rem;
+  box-shadow: 0 24px 48px -12px rgba(15, 23, 42, 0.25);
+}
+
+.lr-confirm-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+}
+
+.lr-confirm-icon {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.lr-confirm-icon svg {
+  width: 1.375rem;
+  height: 1.375rem;
+}
+
+.lr-confirm-icon-logout,
+.lr-confirm-icon-danger {
+  background: #fff1f2;
+  color: #e11d48;
+  border: 1px solid #fecdd3;
+}
+
+.lr-confirm-icon-info {
+  background: #ebf6ff;
+  color: #0095ff;
+  border: 1px solid #bae6fd;
+}
+
+.lr-confirm-text-wrap {
+  flex: 1 1 0%;
+  min-width: 0;
+}
+
+.lr-confirm-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.3;
+}
+
+.lr-confirm-desc {
+  margin: 0.375rem 0 0;
+  font-size: 0.85rem;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.lr-confirm-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.625rem;
+  margin-top: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.lr-confirm-btn {
+  height: 2.5rem;
+  padding: 0 1rem;
+  border-radius: 0.625rem;
+  font-size: 0.825rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 140ms ease, border-color 140ms ease, transform 100ms ease;
+}
+
+.lr-confirm-btn-cancel {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+}
+
+.lr-confirm-btn-cancel:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.lr-confirm-btn-danger {
+  background: #e11d48;
+  border: 1px solid #e11d48;
+  color: #ffffff;
+}
+
+.lr-confirm-btn-danger:hover:not(:disabled) {
+  background: #be123c;
+}
+
+.lr-confirm-btn-primary {
+  background: #0095ff;
+  border: 1px solid #0095ff;
+  color: #ffffff;
+}
+
+.lr-confirm-btn-primary:hover:not(:disabled) {
+  background: #0077cc;
+}
+
+/* Friendly Empty State */
+.lr-empty-state {
+  padding: 2.5rem 1.5rem;
+  border-radius: 1rem;
+  border: 1px solid #bce3ff;
+  background: #f8fbff;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.lr-empty-state-icon {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.875rem;
+  background: #ebf6ff;
+  border: 1px solid #bce3ff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.25rem;
+}
+
+.lr-empty-state-title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #0d1015;
+}
+
+.lr-empty-state-desc {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #475569;
+  max-width: 26rem;
+}
+
+/* Subtle Button Press, Disabled & Keyboard Focus Polish */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #0095ff;
+  outline-offset: 2px;
+}
+
+button:active:not(:disabled) {
+  transform: translateY(0.5px);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lr-btn-spinner,
+  .lr-skeleton {
+    animation-duration: 0.01ms !important;
+  }
+  .lr-toast,
+  .lr-confirm-btn,
+  button {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+
 
 

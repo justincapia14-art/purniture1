@@ -182,6 +182,12 @@ $activeMode = strtolower(trim((string) ($mode ?? 'signin'))) === 'register' ? 'r
       </div>
     </main>
 
-    <script src="assets/js/login.js"></script>
+    <?php $serverFlash = function_exists('getFlashMessage') ? getFlashMessage() : null; ?>
+    <?php if (is_array($serverFlash)): ?>
+    <script>
+      window.__SERVER_FLASH__ = <?= json_encode($serverFlash, JSON_UNESCAPED_SLASHES) ?>;
+    </script>
+    <?php endif; ?>
+    <script type="module" src="assets/js/login.js"></script>
   </body>
 </html>

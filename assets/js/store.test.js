@@ -12,6 +12,16 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
+  normalizeToastPayload,
+  confirmAndExecuteLogout,
+  withButtonLoading,
+  openConfirmDialog,
+  setFieldError,
+  clearFormErrors,
+  renderProductCardSkeletons,
+  buildEmptyStateHtml,
+} from './feedback.js';
+import {
   OrderQueue,
   HashTable,
   computeHashBucketIndex,
@@ -1119,6 +1129,79 @@ describe('Pure JavaScript & Server Store Logic Tests', () => {
     // 4. Direct URL protection in dashboard.js and HomeControllers.php
     assert.ok(dashboardJs.includes("if (urlRole === 'admin' && !isAdmin)"));
     assert.ok(homeCtrlPhp.includes("if ($requestedRole === 'admin' && $actualRole !== 'admin')"));
+  });
+
+  it('verifies reusable UI/UX feedback module: logout confirmation modal, button loading spinners, 4 toast notification types, and strict DSA preservation', () => {
+    // 1. Toast notification payload normalization across all 4 types (Success, Error, Warning, Info)
+    const successToast = normalizeToastPayload({
+      type: 'success',
+      title: 'Product Successfully Added to Cart',
+      message: 'Monolith Dining Table added to your shopping cart.',
+    });
+    assert.equal(successToast.type, 'success');
+    assert.equal(successToast.title, 'Product Successfully Added to Cart');
+    assert.ok(successToast.duration >= 4000);
+
+    const errorToast = normalizeToastPayload({
+      type: 'error',
+      title: 'Incorrect Email or Password',
+      message: 'Please verify your credentials and try again.',
+    });
+    assert.equal(errorToast.type, 'error');
+    assert.ok(errorToast.duration >= 6000);
+
+    const warningToast = normalizeToastPayload({
+      type: 'warning',
+      message: 'Low stock warning: only 2 units remaining.',
+    });
+    assert.equal(warningToast.type, 'warning');
+    assert.equal(warningToast.title, 'Attention Needed');
+
+    const infoToast = normalizeToastPayload({
+      type: 'info',
+      message: 'Your report is ready to download.',
+    });
+    assert.equal(infoToast.type, 'info');
+    assert.equal(infoToast.title, 'Information');
+
+    // 2. Empty state helper and exported feedback functions
+    assert.equal(typeof confirmAndExecuteLogout, 'function');
+    assert.equal(typeof withButtonLoading, 'function');
+    assert.equal(typeof openConfirmDialog, 'function');
+    assert.equal(typeof setFieldError, 'function');
+    assert.equal(typeof clearFormErrors, 'function');
+    assert.equal(typeof renderProductCardSkeletons, 'function');
+    const emptyHtml = buildEmptyStateHtml({
+      title: 'No matching furniture pieces found',
+      description: 'Try clearing your active filters.',
+      actionLabel: 'Reset Filters',
+      actionId: 'reset-btn',
+    });
+    assert.ok(emptyHtml.includes('No matching furniture pieces found'));
+    assert.ok(emptyHtml.includes('id="reset-btn"'));
+
+    // 3. Verify Logout Confirmation Modal and Button Loading States across scripts
+    const feedbackJs = fs.readFileSync(path.join(process.cwd(), 'assets', 'js', 'feedback.js'), 'utf8');
+    const loginJs = fs.readFileSync(path.join(process.cwd(), 'assets', 'js', 'login.js'), 'utf8');
+    const appJs = fs.readFileSync(path.join(process.cwd(), 'assets', 'js', 'app.js'), 'utf8');
+    const dashboardJs = fs.readFileSync(path.join(process.cwd(), 'assets', 'js', 'dashboard.js'), 'utf8');
+
+    assert.ok(feedbackJs.includes('Are you sure you want to log out?'));
+    assert.ok(feedbackJs.includes('You will need to sign in again to access your account.'));
+    assert.ok(feedbackJs.includes('Yes, Log Out'));
+    assert.ok(feedbackJs.includes('Logging out...'));
+
+    assert.ok(loginJs.includes('Signing in...'));
+    assert.ok(loginJs.includes('Creating account...'));
+    assert.ok(appJs.includes('Adding to cart...'));
+    assert.ok(appJs.includes('Applying voucher...'));
+    assert.ok(appJs.includes('Sending message...'));
+    assert.ok(dashboardJs.includes('Placing order...'));
+    assert.ok(dashboardJs.includes('Saving changes...'));
+    assert.ok(dashboardJs.includes('Creating voucher...'));
+    assert.ok(dashboardJs.includes('Updating stock...'));
+    assert.ok(dashboardJs.includes('Uploading...'));
+    assert.ok(dashboardJs.includes('Generating report...'));
   });
 });
 

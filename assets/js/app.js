@@ -18,6 +18,16 @@ import {
   validateAndBuildOfferProposal,
   validateVoucherForOrder,
 } from './store.js';
+import {
+  consumeFlashToasts,
+  showToast,
+  withButtonLoading,
+  confirmAndExecuteLogout,
+  openConfirmDialog,
+  setFieldError,
+  clearFormErrors,
+  renderProductCardSkeletons,
+} from './feedback.js';
 
 
 
@@ -260,7 +270,11 @@ function bindStorefrontProductButtons(root = document) {
   root.querySelectorAll('[data-add-cart]').forEach((btn) => {
     btn.onclick = () => {
       const pid = btn.getAttribute('data-add-cart');
-      if (pid) addProductToCartFromStorefront(pid);
+      if (pid) {
+        withButtonLoading(btn, 'Adding to cart...', () => {
+          addProductToCartFromStorefront(pid);
+        });
+      }
     };
   });
 }
@@ -393,12 +407,27 @@ async function loadData() {
    ========================================================================== */
 function handleStorefrontLogout(e) {
   if (e) e.preventDefault();
-  state.sessionUser = null;
-  state.cartItems = [];
-  state.appliedVoucher = null;
-  saveSessionUserToServer(null);
-  syncAuthNavigationUI();
-  renderCartDrawer();
+  confirmAndExecuteLogout(async () => {
+    state.sessionUser = null;
+    state.cartItems = [];
+    state.appliedVoucher = null;
+    try {
+      await fetch(API_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'save_session', sessionUser: null }),
+      });
+    } catch (_err) {
+      // Ignore network error
+    }
+    syncAuthNavigationUI();
+    renderCartDrawer();
+    showToast({
+      type: 'success',
+      title: 'Logged Out Successfully',
+      message: 'You have been safely signed out of your account.',
+    });
+  });
 }
 
 function syncAuthNavigationUI() {
@@ -569,66 +598,79 @@ function bindCartDrawerAndVoucher() {
   const applyVoucherBtn = document.getElementById('apply-voucher-btn');
   if (applyVoucherBtn) {
     applyVoucherBtn.addEventListener('click', async () => {
-      const codeInput = document.getElementById('voucher-code-input');
-      const feedback = document.getElementById('voucher-feedback');
-      const code = codeInput ? codeInput.value.trim().toUpperCase() : '';
-      const activeEmail = state.sessionUser
-        ? state.sessionUser.email
-        : state.customerProfile?.email || '';
+      await withButtonLoading(applyVoucherBtn, 'Applying voucher...', async () => {
+        const codeInput = document.getElementById('voucher-code-input');
+        const feedback = document.getElementById('voucher-feedback');
+        const code = codeInput ? codeInput.value.trim().toUpperCase() : '';
+        const activeEmail = state.sessionUser
+          ? state.sessionUser.email
+          : state.customerProfile?.email || '';
 
-      let check = validateVoucherForOrder(
-        state.vouchers,
-        code,
-        activeEmail,
-        state.cartItems,
-        state.catalog
-      );
+        let check = validateVoucherForOrder(
+          state.vouchers,
+          code,
+          activeEmail,
+          state.cartItems,
+          state.catalog
+        );
 
-      if (check.valid) {
-        try {
-          const resp = await fetch(API_ENDPOINT, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin',
-            body: JSON.stringify({
-              action: 'validate_voucher',
-              voucherCode: code,
-              customerEmail: activeEmail,
-              cartItems: state.cartItems.map((c) => ({
-                productId: c.product.id,
-                quantity: c.quantity,
-              })),
-            }),
-          });
-          const data = await resp.json();
-          if (!resp.ok || !data.valid) {
-            check = {
-              valid: false,
-              discountAmount: 0,
-              voucher: null,
-              errorMessage: data.error || 'Voucher validation failed on server.',
-            };
-          }
-        } catch (_err) {
-          // Offline fallback uses check result
-        }
-      }
-
-      if (feedback) {
-        feedback.classList.remove('hidden', 'text-emerald-700', 'text-rose-600');
         if (check.valid) {
-          state.appliedVoucher = check.voucher;
-          const targetProdName =
-            check.voucher.furnitureName || check.voucher.productName || 'selected product';
-          feedback.textContent = `✓ Voucher ${check.voucher.code} (${formatVoucherBenefitLabel(check.voucher)}) applied to "${targetProdName}" (-${usd(check.discountAmount)})!`;
-          feedback.classList.add('text-emerald-700');
-        } else {
-          state.appliedVoucher = null;
-          feedback.textContent = `✕ ${check.errorMessage}`;
-          feedback.classList.add('text-rose-600');
+          try {
+            const resp = await fetch(API_ENDPOINT, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'same-origin',
+              body: JSON.stringify({
+                action: 'validate_voucher',
+                voucherCode: code,
+                customerEmail: activeEmail,
+                cartItems: state.cartItems.map((c) => ({
+                  productId: c.product.id,
+                  quantity: c.quantity,
+                })),
+              }),
+            });
+            const data = await resp.json();
+            if (!resp.ok || !data.valid) {
+              check = {
+                valid: false,
+                discountAmount: 0,
+                voucher: null,
+                errorMessage: data.error || 'Voucher validation failed on server.',
+              };
+            }
+          } catch (_err) {
+            // Offline fallback uses check result
+          }
         }
-      }
-      renderCartDrawer();
+
+        if (feedback) {
+          feedback.classList.remove('hidden', 'text-emerald-700', 'text-rose-600');
+          if (check.valid) {
+            state.appliedVoucher = check.voucher;
+            const targetProdName =
+              check.voucher.furnitureName || check.voucher.productName || 'selected product';
+            const successMsg = `Voucher ${check.voucher.code} (${formatVoucherBenefitLabel(check.voucher)}) applied to "${targetProdName}" (-${usd(check.discountAmount)})!`;
+            feedback.textContent = `✓ ${successMsg}`;
+            feedback.classList.add('text-emerald-700');
+            showToast({
+              type: 'success',
+              title: 'Voucher Applied',
+              message: successMsg,
+            });
+          } else {
+            state.appliedVoucher = null;
+            feedback.textContent = `✕ ${check.errorMessage}`;
+            feedback.classList.add('text-rose-600');
+            showToast({
+              type: 'error',
+              title: 'Invalid or Expired Voucher',
+              message: check.errorMessage || 'Could not apply this voucher code.',
+            });
+          }
+        }
+        renderCartDrawer();
+      });
     });
   }
 }
@@ -798,7 +840,14 @@ function addProductToCartFromStorefront(productId) {
   const product = state.catalog.find((p) => p.id === productId);
   if (!product) return;
   const availableStock = Math.max(0, Math.floor(Number(product.inStockCount ?? 0)));
-  if (availableStock <= 0) return;
+  if (availableStock <= 0) {
+    showToast({
+      type: 'error',
+      title: 'Insufficient Stock',
+      message: `"${product.name}" is currently out of stock.`,
+    });
+    return;
+  }
 
   const currentProductQtyInCart = state.cartItems
     .filter((c) => c.product.id === product.id)
@@ -811,7 +860,13 @@ function addProductToCartFromStorefront(productId) {
       cartDrawer.classList.add('flex');
       syncBodyScrollLock();
     }
-    renderCartDrawer(`Maximum available stock (${availableStock}) for "${product.name}" is already in your cart.`);
+    const maxMsg = `Maximum available stock (${availableStock}) for "${product.name}" is already in your cart.`;
+    renderCartDrawer(maxMsg);
+    showToast({
+      type: 'warning',
+      title: 'Stock Limit Reached',
+      message: maxMsg,
+    });
     return;
   }
 
@@ -827,6 +882,11 @@ function addProductToCartFromStorefront(productId) {
   }
   saveCartToStorage();
   renderCartDrawer();
+  showToast({
+    type: 'success',
+    title: 'Product Successfully Added to Cart',
+    message: `${product.name} (${finish}) has been added to your shopping cart.`,
+  });
   const cartDrawer = document.getElementById('cart-drawer');
   if (cartDrawer) {
     cartDrawer.classList.remove('hidden');
@@ -1026,11 +1086,13 @@ function openProductDetailModal(productId) {
 
   const modalAddBtn = document.getElementById('modal-add-to-cart-btn');
   if (modalAddBtn) {
-    modalAddBtn.addEventListener('click', () => {
-      modal.classList.add('hidden');
-      modal.classList.remove('flex');
-      syncBodyScrollLock();
-      addProductToCartFromStorefront(product.id);
+    modalAddBtn.addEventListener('click', async () => {
+      await withButtonLoading(modalAddBtn, 'Adding to cart...', () => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        syncBodyScrollLock();
+        addProductToCartFromStorefront(product.id);
+      });
     });
   }
 
@@ -1475,6 +1537,11 @@ function initMakeOfferModal() {
         if (refPreviewImg && activeOfferRefDataUrl) refPreviewImg.src = activeOfferRefDataUrl;
         if (refPreviewName) refPreviewName.textContent = activeOfferRefName;
         if (refPreviewWrap) refPreviewWrap.classList.remove('hidden');
+        showToast({
+          type: 'success',
+          title: 'Reference Image Uploaded',
+          message: `Attached "${activeOfferRefName}" to your offer proposal.`,
+        });
       };
       reader.readAsDataURL(file);
     });
@@ -1486,12 +1553,18 @@ function initMakeOfferModal() {
       activeOfferRefName = '';
       if (refInput) refInput.value = '';
       if (refPreviewWrap) refPreviewWrap.classList.add('hidden');
+      showToast({
+        type: 'info',
+        title: 'Reference Image Removed',
+        message: 'Removed the reference image from your offer proposal.',
+      });
     });
   }
 
   if (form) {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
+      clearFormErrors(form);
       if (errorEl) errorEl.classList.add('hidden');
 
       const product = state.catalog.find((p) => p.id === activeOfferProductId);
@@ -1503,7 +1576,8 @@ function initMakeOfferModal() {
         product.defaultFinish;
       const display = formatCustomerProductDisplay(product, selectedFinish);
 
-      const proposedPriceVal = document.getElementById('offer-proposed-price')?.value;
+      const proposedPriceInput = document.getElementById('offer-proposed-price');
+      const proposedPriceVal = proposedPriceInput?.value;
       const customizationsVal = document.getElementById('offer-customizations')?.value;
       const notesVal = document.getElementById('offer-notes')?.value;
 
@@ -1522,23 +1596,40 @@ function initMakeOfferModal() {
       );
 
       if (!validation.ok || !validation.proposal) {
+        const errMsg = validation.errorMessage || 'Please enter a valid offer amount.';
+        if (proposedPriceInput) {
+          setFieldError(proposedPriceInput, errMsg, true);
+        }
         if (errorEl) {
-          errorEl.textContent = validation.errorMessage || 'Please enter a valid offer amount.';
+          errorEl.textContent = errMsg;
           errorEl.classList.remove('hidden');
         }
+        showToast({
+          type: 'error',
+          title: 'Unable to Generate Offer',
+          message: errMsg,
+        });
         return;
       }
 
-      latestGeneratedProposal = validation.proposal;
-      syncDatabaseStore('save_offer', { offer: validation.proposal });
+      const submitBtn = form.querySelector('button[type="submit"]');
+      await withButtonLoading(submitBtn, 'Sending message...', async () => {
+        latestGeneratedProposal = validation.proposal;
+        syncDatabaseStore('save_offer', { offer: validation.proposal });
 
-      await renderOfferProposalCanvas(validation.proposal);
-      if (statusBadge) {
-        statusBadge.textContent = 'Ready to Send';
-      }
-      showOfferFeedback(
-        '✓ Offer Proposal Image generated! Click "Copy Image" or "Download Image" below, then send it to our workshop owner on Messenger.'
-      );
+        await renderOfferProposalCanvas(validation.proposal);
+        if (statusBadge) {
+          statusBadge.textContent = 'Ready to Send';
+        }
+        const successMsg =
+          'Offer Proposal Image generated! Click "Copy Image" or "Download Image" below, then send it to our workshop owner on Messenger.';
+        showOfferFeedback(`✓ ${successMsg}`);
+        showToast({
+          type: 'success',
+          title: 'Message Sent / Offer Proposal Ready',
+          message: 'Your custom furniture offer proposal is ready to send on Messenger.',
+        });
+      });
     });
   }
 
@@ -1547,52 +1638,71 @@ function initMakeOfferModal() {
       const canvas = document.getElementById('offer-proposal-canvas');
       if (!canvas || !latestGeneratedProposal) return;
 
-      try {
-        const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
-        if (
-          blob &&
-          navigator.clipboard &&
-          typeof navigator.clipboard.write === 'function' &&
-          typeof window.ClipboardItem !== 'undefined'
-        ) {
-          await navigator.clipboard.write([new window.ClipboardItem({ 'image/png': blob })]);
-          showOfferFeedback(
-            '✓ Offer image copied to clipboard! Open Messenger and paste (Ctrl+V / Cmd+V) to send it to the owner.'
-          );
-          return;
+      await withButtonLoading(copyBtn, 'Copying...', async () => {
+        try {
+          const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+          if (
+            blob &&
+            navigator.clipboard &&
+            typeof navigator.clipboard.write === 'function' &&
+            typeof window.ClipboardItem !== 'undefined'
+          ) {
+            await navigator.clipboard.write([new window.ClipboardItem({ 'image/png': blob })]);
+            showOfferFeedback(
+              '✓ Offer image copied to clipboard! Open Messenger and paste (Ctrl+V / Cmd+V) to send it to the owner.'
+            );
+            showToast({
+              type: 'success',
+              title: 'Offer Image Copied',
+              message: 'Paste the image into your Messenger conversation with our workshop.',
+            });
+            return;
+          }
+        } catch (_err) {
+          // Fallback below if browser restricts raw image clipboard in headless/insecure context
         }
-      } catch (_err) {
-        // Fallback below if browser restricts raw image clipboard in headless/insecure context
-      }
 
-      try {
-        const summaryText = `Offer Proposal ${latestGeneratedProposal.proposalCode}: ${latestGeneratedProposal.productName} (${latestGeneratedProposal.selectedFinish}) — Proposed Price: ${usd(latestGeneratedProposal.proposedPrice)} (Listed: ${usd(latestGeneratedProposal.originalPrice)}). Customizations: ${latestGeneratedProposal.customizations}`;
-        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-          await navigator.clipboard.writeText(summaryText);
+        try {
+          const summaryText = `Offer Proposal ${latestGeneratedProposal.proposalCode}: ${latestGeneratedProposal.productName} (${latestGeneratedProposal.selectedFinish}) — Proposed Price: ${usd(latestGeneratedProposal.proposedPrice)} (Listed: ${usd(latestGeneratedProposal.originalPrice)}). Customizations: ${latestGeneratedProposal.customizations}`;
+          if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+            await navigator.clipboard.writeText(summaryText);
+          }
+        } catch (_e) {
+          // Ignore
         }
-      } catch (_e) {
-        // Ignore
-      }
-      showOfferFeedback(
-        '✓ Offer image copied to clipboard! You can now paste it directly into your Messenger conversation with the owner.'
-      );
+        showOfferFeedback(
+          '✓ Offer image copied to clipboard! You can now paste it directly into your Messenger conversation with the owner.'
+        );
+        showToast({
+          type: 'success',
+          title: 'Offer Copied to Clipboard',
+          message: 'You can now paste your offer details into Messenger.',
+        });
+      });
     });
   }
 
   if (downloadBtn) {
-    downloadBtn.addEventListener('click', () => {
+    downloadBtn.addEventListener('click', async () => {
       const canvas = document.getElementById('offer-proposal-canvas');
       if (!canvas || !latestGeneratedProposal) return;
-      const dataUrl = canvas.toDataURL('image/png');
-      const link = document.createElement('a');
-      link.download = latestGeneratedProposal.downloadFilename || 'furniture-offer-proposal.png';
-      link.href = dataUrl;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      showOfferFeedback(
-        `✓ Offer image downloaded (${link.download})! Attach and send it to the business owner on Messenger.`
-      );
+      await withButtonLoading(downloadBtn, 'Downloading...', () => {
+        const dataUrl = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.download = latestGeneratedProposal.downloadFilename || 'furniture-offer-proposal.png';
+        link.href = dataUrl;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showOfferFeedback(
+          `✓ Offer image downloaded (${link.download})! Attach and send it to the business owner on Messenger.`
+        );
+        showToast({
+          type: 'info',
+          title: 'Offer Proposal Downloaded',
+          message: `${link.download} is ready to attach in Messenger.`,
+        });
+      });
     });
   }
 }
@@ -1940,27 +2050,59 @@ function renderCartDrawer(stockWarningMessage = '') {
         .reduce((sum, c) => sum + c.quantity, 0);
 
       if (delta > 0 && totalForThisProduct >= maxStock) {
-        renderCartDrawer(`Only ${maxStock} units of "${itemProd.name}" are available in stock.`);
+        const stockMsg = `Only ${maxStock} units of "${itemProd.name}" are available in stock.`;
+        renderCartDrawer(stockMsg);
+        showToast({
+          type: 'warning',
+          title: 'Stock Limit Reached',
+          message: stockMsg,
+        });
         return;
       }
 
       const nextQty = state.cartItems[idx].quantity + delta;
       if (nextQty <= 0) {
+        const removedName = state.cartItems[idx].product?.name || 'Item';
         state.cartItems.splice(idx, 1);
+        saveCartToStorage();
+        renderCartDrawer();
+        showToast({
+          type: 'info',
+          title: 'Cart Updated',
+          message: `"${removedName}" was removed from your shopping cart.`,
+        });
       } else {
         state.cartItems[idx].quantity = nextQty;
+        saveCartToStorage();
+        renderCartDrawer();
       }
-      saveCartToStorage();
-      renderCartDrawer();
     });
   });
 
   list.querySelectorAll('[data-remove-cart]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const idx = Number(btn.getAttribute('data-remove-cart'));
-      state.cartItems.splice(idx, 1);
-      saveCartToStorage();
-      renderCartDrawer();
+      const targetLine = state.cartItems[idx];
+      if (!targetLine) return;
+      const prodName = targetLine.product?.name || 'this item';
+      openConfirmDialog({
+        title: 'Remove Item from Cart?',
+        description: `Are you sure you want to remove "${prodName}" (${targetLine.finish}) from your shopping cart?`,
+        confirmLabel: 'Remove Item',
+        cancelLabel: 'Keep in Cart',
+        variant: 'danger',
+        icon: 'warning',
+        onConfirm: () => {
+          state.cartItems.splice(idx, 1);
+          saveCartToStorage();
+          renderCartDrawer();
+          showToast({
+            type: 'info',
+            title: 'Cart Updated',
+            message: `"${prodName}" was removed from your shopping cart.`,
+          });
+        },
+      });
     });
   });
 
@@ -2488,7 +2630,17 @@ function renderCatalogPage() {
    BOOTSTRAP
    ========================================================================== */
 document.addEventListener('DOMContentLoaded', async () => {
+  consumeFlashToasts();
   state.sessionUser = loadSessionUser();
+
+  const homeCatalogGrid = document.getElementById('product-catalog-grid');
+  if (homeCatalogGrid && !homeCatalogGrid.children.length) {
+    renderProductCardSkeletons(homeCatalogGrid, 4);
+  }
+  const fullCatalogGrid = document.getElementById('catalog-page-grid');
+  if (fullCatalogGrid && !fullCatalogGrid.children.length) {
+    renderProductCardSkeletons(fullCatalogGrid, 6);
+  }
 
   const data = await loadData();
   state.categories = Array.isArray(data.categories) ? data.categories : [];

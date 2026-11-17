@@ -4,7 +4,19 @@
  * Communicates with server-side PDO endpoint (`api.php`) instead of browser `localStorage`.
  */
 
+import {
+  consumeFlashToasts,
+  showToast,
+  queueFlashToast,
+  withButtonLoading,
+  confirmAndExecuteLogout,
+  setFieldError,
+  clearFormErrors,
+} from './feedback.js';
+
 document.addEventListener('DOMContentLoaded', () => {
+  consumeFlashToasts();
+
   const form = document.getElementById('lr-login-form');
   const nameGroup = document.getElementById('register-name-group');
   const nameInput = document.getElementById('register-name');
@@ -71,17 +83,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const logoutBtn = document.getElementById('login-page-logout-btn');
       if (logoutBtn) {
-        logoutBtn.addEventListener('click', async () => {
-          try {
-            await fetch(API_ENDPOINT, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ action: 'save_session', sessionUser: null }),
+        logoutBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          confirmAndExecuteLogout(async () => {
+            try {
+              await fetch(API_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'save_session', sessionUser: null }),
+              });
+            } catch (_err) {
+              // Ignore network error
+            }
+            await renderActiveSessionBanner();
+            showToast({
+              type: 'success',
+              title: 'Logged Out Successfully',
+              message: 'You have been safely signed out of your account.',
             });
-          } catch (_err) {
-            // Ignore network error
-          }
-          await renderActiveSessionBanner();
+          });
         });
       }
     } catch (_e) {
@@ -139,16 +159,26 @@ document.addEventListener('DOMContentLoaded', () => {
     updateAuthUI();
   }
 
-  function showError(message) {
-    if (!errorBanner) return;
-    errorBanner.textContent = message;
-    errorBanner.style.display = 'block';
+  function showError(message, toastTitle = 'Authentication Error') {
+    if (errorBanner) {
+      errorBanner.textContent = message;
+      errorBanner.style.display = 'block';
+    }
+    showToast({
+      type: 'error',
+      title: toastTitle,
+      message,
+    });
   }
 
   function hideError() {
-    [nameInput, emailInput, passwordInput, phoneInput, addressInput].forEach((el) => {
-      if (el) el.classList.remove('has-error');
-    });
+    if (form) {
+      clearFormErrors(form);
+    } else {
+      [nameInput, emailInput, passwordInput, phoneInput, addressInput].forEach((el) => {
+        if (el) el.classList.remove('has-error');
+      });
+    }
     if (!errorBanner) return;
     errorBanner.textContent = '';
     errorBanner.style.display = 'none';
@@ -182,97 +212,153 @@ document.addEventListener('DOMContentLoaded', () => {
       const phoneNumber = phoneInput ? phoneInput.value.trim() : '';
       const address = addressInput ? addressInput.value.trim() : '';
 
+      let firstInvalidField = null;
+      let firstErrorMessage = '';
+
       if (isRegister && fullName.length < 2) {
-        event.preventDefault();
-        if (nameInput) nameInput.classList.add('has-error');
-        showError('Please enter your full name (at least 2 characters).');
-        return;
+        const msg = 'Please enter your full name (at least 2 characters).';
+        setFieldError(nameInput, msg, false);
+        firstInvalidField = firstInvalidField || nameInput;
+        firstErrorMessage = firstErrorMessage || msg;
       }
 
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        event.preventDefault();
-        if (emailInput) emailInput.classList.add('has-error');
-        showError('Please enter a valid email address.');
-        return;
+        const msg = 'Please enter a valid email address.';
+        setFieldError(emailInput, msg, false);
+        firstInvalidField = firstInvalidField || emailInput;
+        firstErrorMessage = firstErrorMessage || msg;
       }
 
       if (!password || password.length < 6) {
-        event.preventDefault();
-        if (passwordInput) passwordInput.classList.add('has-error');
-        showError('Password must be at least 6 characters.');
-        return;
+        const msg = 'Password must be at least 6 characters.';
+        setFieldError(passwordInput, msg, false);
+        firstInvalidField = firstInvalidField || passwordInput;
+        firstErrorMessage = firstErrorMessage || msg;
       }
 
       if (isRegister && phoneNumber.length < 7) {
-        event.preventDefault();
-        if (phoneInput) phoneInput.classList.add('has-error');
-        showError('Please enter a valid phone number.');
-        return;
+        const msg = 'Please enter a valid phone number.';
+        setFieldError(phoneInput, msg, false);
+        firstInvalidField = firstInvalidField || phoneInput;
+        firstErrorMessage = firstErrorMessage || msg;
       }
 
       if (isRegister && address.length < 5) {
+        const msg = 'Please enter your complete delivery address.';
+        setFieldError(addressInput, msg, false);
+        firstInvalidField = firstInvalidField || addressInput;
+        firstErrorMessage = firstErrorMessage || msg;
+      }
+
+      if (firstInvalidField) {
         event.preventDefault();
-        if (addressInput) addressInput.classList.add('has-error');
-        showError('Please enter your complete delivery address.');
+        if (typeof firstInvalidField.focus === 'function') {
+          firstInvalidField.focus();
+        }
+        showError(firstErrorMessage, 'Please Check Required Fields');
         return;
       }
 
       const formAction = (form.getAttribute('action') || '').toLowerCase();
       if (window.location.pathname.endsWith('.php') || formAction.includes('index.php')) {
+        if (submitButton) {
+          submitButton.disabled = true;
+        }
         return;
       }
 
       event.preventDefault();
 
       let targetRoleParam = 'client';
+      let redirectNow = false;
+      let authenticatedName = fullName || email;
 
-      try {
-        if (isRegister) {
-          const regRes = await fetch(API_ENDPOINT, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              action: 'register_customer',
-              fullName,
-              email,
-              password,
-              phoneNumber,
-              address,
-            }),
-          });
-          const regData = await regRes.json().catch(() => null);
-          if (!regRes.ok || (regData && regData.ok === false)) {
-            showError(regData?.error || 'Could not register account. That email may already be registered.');
-            return;
-          }
-          targetRoleParam = 'client';
-        } else {
-          const loginRes = await fetch(API_ENDPOINT, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              action: 'login_user',
-              email,
-              password,
-            }),
-          });
-          const loginData = await loginRes.json().catch(() => null);
-          if (!loginRes.ok || !loginData || loginData.ok === false) {
+      await withButtonLoading(
+        submitButton,
+        isRegister ? 'Creating account...' : 'Signing in...',
+        async () => {
+          try {
+            if (isRegister) {
+              const regRes = await fetch(API_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  action: 'register_customer',
+                  fullName,
+                  email,
+                  password,
+                  phoneNumber,
+                  address,
+                }),
+              });
+              const regData = await regRes.json().catch(() => null);
+              if (!regRes.ok || (regData && regData.ok === false)) {
+                const errMsg =
+                  regData?.error || 'Could not register account. That email may already be registered.';
+                if (regData?.errors && typeof regData.errors === 'object') {
+                  if (regData.errors.fullName) setFieldError(nameInput, regData.errors.fullName, false);
+                  if (regData.errors.email) setFieldError(emailInput, regData.errors.email, false);
+                  if (regData.errors.password) setFieldError(passwordInput, regData.errors.password, false);
+                  if (regData.errors.phoneNumber) setFieldError(phoneInput, regData.errors.phoneNumber, false);
+                  if (regData.errors.address) setFieldError(addressInput, regData.errors.address, false);
+                }
+                showError(errMsg, 'Registration Failed');
+                return;
+              }
+              authenticatedName =
+                regData?.user?.fullName || regData?.sessionUser?.name || fullName || email;
+              targetRoleParam = 'client';
+              redirectNow = true;
+            } else {
+              const loginRes = await fetch(API_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  action: 'login_user',
+                  email,
+                  password,
+                }),
+              });
+              const loginData = await loginRes.json().catch(() => null);
+              if (!loginRes.ok || !loginData || loginData.ok === false) {
+                showError(
+                  loginData?.error ||
+                    'Incorrect email or password. Please verify your credentials and try again.',
+                  'Incorrect Email or Password'
+                );
+                return;
+              }
+              const detectedRoleRaw = String(
+                loginData.sessionUser?.role || loginData.user?.role || 'Customer'
+              ).toLowerCase();
+              authenticatedName =
+                loginData.sessionUser?.name ||
+                loginData.user?.fullName ||
+                loginData.user?.name ||
+                email;
+              targetRoleParam = detectedRoleRaw === 'admin' ? 'admin' : 'client';
+              redirectNow = true;
+            }
+          } catch (_e) {
             showError(
-              loginData?.error ||
-                'Invalid email address or password. Please verify your credentials and try again.'
+              'Unable to reach authentication server. Please check your connection and try again.',
+              'Connection Error'
             );
-            return;
           }
-          const detectedRoleRaw = String(
-            loginData.sessionUser?.role || loginData.user?.role || 'Customer'
-          ).toLowerCase();
-          targetRoleParam = detectedRoleRaw === 'admin' ? 'admin' : 'client';
         }
-      } catch (_e) {
-        showError('Unable to reach authentication server. Please try again.');
+      );
+
+      if (!redirectNow) {
         return;
       }
+
+      queueFlashToast({
+        type: 'success',
+        title: isRegister ? 'Account Created Successfully' : 'Signed In Successfully',
+        message: isRegister
+          ? `Welcome to Lillia and Rowena Furniture, ${authenticatedName}!`
+          : `Welcome back, ${authenticatedName}.`,
+      });
 
       const redirectParam = (params.get('redirect') || '').toLowerCase();
       if (redirectParam === 'request-design' && targetRoleParam !== 'admin') {
@@ -283,3 +369,4 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+

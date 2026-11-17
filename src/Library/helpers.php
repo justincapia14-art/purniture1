@@ -73,3 +73,41 @@ if (!function_exists('jsonResponse')) {
         exit;
     }
 }
+
+if (!function_exists('setFlashMessage')) {
+    /**
+     * Store a one-time session flash notification for display on the next rendered page.
+     */
+    function setFlashMessage(string $type, string $title, string $message): void
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            @session_start();
+        }
+        $_SESSION['flash_message'] = [
+            'type'    => $type,
+            'title'   => $title,
+            'message' => $message,
+        ];
+    }
+}
+
+if (!function_exists('getFlashMessage')) {
+    /**
+     * Retrieve and clear any queued session flash notification.
+     *
+     * @return array<string, string>|null
+     */
+    function getFlashMessage(): ?array
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            @session_start();
+        }
+        if (isset($_SESSION['flash_message']) && is_array($_SESSION['flash_message'])) {
+            $flash = $_SESSION['flash_message'];
+            unset($_SESSION['flash_message']);
+            return $flash;
+        }
+        return null;
+    }
+}
+
