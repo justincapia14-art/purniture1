@@ -10,6 +10,6 @@
     "preview": "node server.mjs",
     "clean": "rm -rf dist",
     "lint": "test -f index.html && test -f catalog.html && test -f login.html && test -f dashboard.html && test -f src/api.php && test -f server.mjs && test -f assets/css/style.css && test -f assets/css/login.css && test -f assets/js/app.js && test -f assets/js/store.js && test -f assets/js/login.js && test -f assets/js/dashboard.js && test -f assets/js/analytics.js",
-    "test": "php tests/analytics-report.php"
+    "test": "node --test assets/js/*.test.js"
   }
 }

@@ -371,13 +371,7 @@ $sessionPayload = [
                         Edit Details →
                       </button>
                     </div>
-                    <div id="client-home-address-preview" class="space-y-2 text-xs text-[#475569]">
-                      <div class="pt-4 border-t border-[#E2E8F0] space-y-1.5">
-                        <p id="client-home-addr-name" class="font-serif-display text-sm font-bold text-[#0D1015]">Rowena Vance</p>
-                        <p id="client-home-addr-phone" class="font-mono-tech text-xs text-[#0077CC]">+1 (212) 555-0148</p>
-                        <p id="client-home-addr-line" class="text-xs text-[#0D1015]">Suite 400, 118 Mercer St, SoHo, New York, NY 10013</p>
-                      </div>
-                    </div>
+                    <div id="client-home-address-preview" class="space-y-2 text-xs text-[#475569]"></div>
                   </div>
                 </div>
 
@@ -431,54 +425,7 @@ $sessionPayload = [
                 </div>
 
                 <!-- Interactive Custom Furniture Commission Builder (Synced with Workshop Materials & Admin Orders) -->
-                <div id="client-custom-order-card" class="hidden bg-white rounded-3xl border border-[#BCE3FF] p-6 sm:p-8 shadow-2xs space-y-5">
-                  <form id="client-custom-commission-form" novalidate class="space-y-5">
-                    <div class="pb-4 border-b border-[#E2E8F0] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div>
-                        <p class="font-mono-tech text-xs uppercase tracking-widest text-[#0077CC] font-bold">Bespoke Workshop Commission</p>
-                        <h3 class="font-serif-display text-lg font-bold text-[#0D1015] mt-0.5">Commission a Custom-Built Piece from Workshop Materials</h3>
-                      </div>
-                      <div class="sm:text-right">
-                        <p id="cust-ord-estimated-total" class="font-mono-tech text-xl font-bold text-[#0095FF]">$3,100</p>
-                      </div>
-                    </div>
-                    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      <div>
-                        <label for="cust-ord-product" class="block text-xs font-semibold text-[#0D1015] mb-1">Base Catalog Design</label>
-                        <select id="cust-ord-product" class="w-full px-3.5 py-2.5 rounded-xl border border-[#BCE3FF] bg-[#F8FBFF] text-xs font-semibold"></select>
-                      </div>
-                      <div>
-                        <label for="cust-ord-material" class="block text-xs font-semibold text-[#0D1015] mb-1">Workshop Raw Material</label>
-                        <select id="cust-ord-material" class="w-full px-3.5 py-2.5 rounded-xl border border-[#BCE3FF] bg-[#F8FBFF] text-xs font-semibold"></select>
-                      </div>
-                      <div>
-                        <label for="cust-ord-finish" class="block text-xs font-semibold text-[#0D1015] mb-1">Color / Oil Finish</label>
-                        <input id="cust-ord-finish" type="text" value="Hand-Rubbed Tung Oil" class="w-full px-3.5 py-2.5 rounded-xl border border-[#BCE3FF] bg-[#F8FBFF] text-xs" />
-                      </div>
-                      <div>
-                        <label for="cust-ord-length" class="block text-xs font-semibold text-[#0D1015] mb-1">Length (cm)</label>
-                        <input id="cust-ord-length" type="number" value="260" class="w-full px-3.5 py-2.5 rounded-xl border border-[#BCE3FF] bg-[#F8FBFF] font-mono-tech text-xs" />
-                      </div>
-                      <div>
-                        <label for="cust-ord-width" class="block text-xs font-semibold text-[#0D1015] mb-1">Width (cm)</label>
-                        <input id="cust-ord-width" type="number" value="105" class="w-full px-3.5 py-2.5 rounded-xl border border-[#BCE3FF] bg-[#F8FBFF] font-mono-tech text-xs" />
-                      </div>
-                      <div>
-                        <label for="cust-ord-height" class="block text-xs font-semibold text-[#0D1015] mb-1">Height (cm)</label>
-                        <input id="cust-ord-height" type="number" value="76" class="w-full px-3.5 py-2.5 rounded-xl border border-[#BCE3FF] bg-[#F8FBFF] font-mono-tech text-xs" />
-                      </div>
-                    </div>
-                    <div>
-                      <label for="cust-ord-notes" class="block text-xs font-semibold text-[#0D1015] mb-1">Joinery &amp; Architectural Notes</label>
-                      <input id="cust-ord-notes" type="text" value="" class="w-full px-3.5 py-2.5 rounded-xl border border-[#BCE3FF] bg-[#F8FBFF] text-xs" />
-                    </div>
-                    <p id="client-custom-commission-error" class="hidden text-xs font-semibold text-rose-700"></p>
-                    <div class="flex items-center justify-end gap-3 pt-2">
-                      <button type="button" id="client-cancel-custom-commission-btn" class="px-4 py-2 rounded-xl border border-[#BCE3FF] text-xs font-semibold cursor-pointer">Cancel</button>
-                      <button type="submit" id="client-submit-custom-commission-btn" class="px-5 py-2.5 rounded-xl bg-[#0095FF] hover:bg-[#0077CC] text-white text-xs font-semibold cursor-pointer">Submit Custom Commission</button>
-                    </div>
-                  </form>
-                </div>
+                <div id="client-custom-order-card" class="hidden bg-white rounded-3xl border border-[#BCE3FF] p-6 sm:p-8 shadow-2xs space-y-5"></div>
 
                 <div id="client-orders-friendly-list" class="space-y-5"></div>
               </div>
@@ -1020,31 +967,7 @@ $sessionPayload = [
                 </div>
               </div>
 
-              <div id="admin-overview-recent-orders" class="admin-card overflow-hidden">
-                <div class="p-5 sm:p-6 border-b border-slate-200 flex items-center justify-between gap-3">
-                  <div>
-                    <h2 class="text-base font-bold text-slate-900">Recent Customer Orders</h2>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <button type="button" data-admin-jump="inventory" class="admin-btn admin-btn-sm admin-btn-secondary">Manage Inventory</button>
-                    <button type="button" data-admin-jump="orders" class="admin-btn admin-btn-sm admin-btn-primary">View All Orders</button>
-                  </div>
-                </div>
-                <div class="overflow-x-auto">
-                  <table class="admin-table">
-                    <thead>
-                      <tr>
-                        <th>Order #</th>
-                        <th>Customer</th>
-                        <th>Product</th>
-                        <th>Stage</th>
-                        <th class="text-right">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody id="admin-recent-orders-tbody"></tbody>
-                  </table>
-                </div>
-              </div>
+              <div id="admin-overview-recent-orders" class="admin-card overflow-hidden"></div>
             </div>
 
             <!-- PAGE 2: PRODUCTS -->
@@ -1229,201 +1152,17 @@ $sessionPayload = [
                 </div>
               </form>
 
-              <div id="admin-catalog-list" class="space-y-4">
-                <div class="admin-summary-grid-4">
-                  <div class="admin-summary-card">
-                    <span class="admin-summary-label">Total Products</span>
-                    <span id="prod-kpi-total" class="admin-summary-value">0</span>
-                  </div>
-                  <div class="admin-summary-card">
-                    <span class="admin-summary-label">In Stock</span>
-                    <span id="prod-kpi-in-stock" class="admin-summary-value is-green">0</span>
-                  </div>
-                  <div class="admin-summary-card">
-                    <span class="admin-summary-label">Low Stock</span>
-                    <span id="prod-kpi-low-stock" class="admin-summary-value is-orange">0</span>
-                  </div>
-                  <div class="admin-summary-card">
-                    <span class="admin-summary-label">Out of Stock</span>
-                    <span id="prod-kpi-out-stock" class="admin-summary-value is-red">0</span>
-                  </div>
-                </div>
-                <div class="admin-card">
-                  <div class="admin-toolbar">
-                    <div class="admin-toolbar-filters">
-                      <input id="admin-catalog-search" type="search" placeholder="Search product name, SKU..." class="admin-input admin-search-input" />
-                    </div>
-                    <button type="button" id="admin-toggle-add-product-btn" class="admin-btn admin-btn-sm admin-btn-primary">+ Add Product</button>
-                  </div>
-                  <div class="overflow-x-auto">
-                    <table class="admin-table">
-                      <thead>
-                        <tr>
-                          <th class="admin-col-primary">Product Name</th>
-                          <th>Category</th>
-                          <th>Available Stock</th>
-                          <th>Minimum Stock</th>
-                          <th>Unit Price</th>
-                          <th>Stock Status</th>
-                          <th class="text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody id="admin-catalog-tbody"></tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
+              <div id="admin-catalog-list" class="space-y-4"></div>
             </div>
 
             <!-- PAGE 3: INVENTORY & STOCK MANAGEMENT -->
-            <div id="admin-tab-inventory" class="admin-tab-panel hidden space-y-5">
-              <div class="space-y-5">
-                <div class="admin-summary-grid-5" data-testid="inventory-summary-cards">
-                  <div class="admin-summary-card">
-                    <span class="admin-summary-label">Total Materials</span>
-                    <span id="inv-kpi-total-materials" class="admin-summary-value">0</span>
-                  </div>
-                  <div class="admin-summary-card">
-                    <span class="admin-summary-label">In Stock</span>
-                    <span id="inv-kpi-in-stock" class="admin-summary-value is-green">0</span>
-                  </div>
-                  <div class="admin-summary-card">
-                    <span class="admin-summary-label">Low Stock</span>
-                    <span id="inv-kpi-low-stock" class="admin-summary-value is-orange">0</span>
-                  </div>
-                  <div class="admin-summary-card">
-                    <span class="admin-summary-label">Out of Stock</span>
-                    <span id="inv-kpi-out-stock" class="admin-summary-value is-red">0</span>
-                  </div>
-                  <div class="admin-summary-card">
-                    <span class="admin-summary-label">Total Inventory Value</span>
-                    <span id="inv-kpi-total-value" class="admin-summary-value is-blue font-mono-tech">$0</span>
-                  </div>
-                </div>
-                <div class="admin-card">
-                  <div class="admin-toolbar">
-                    <div class="admin-toolbar-filters">
-                      <input id="admin-inv-stock-search" type="search" placeholder="Search material name, SKU..." class="admin-input admin-search-input" />
-                      <select id="admin-inv-category-filter" class="admin-select admin-filter-select">
-                        <option value="all">All Categories</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div class="overflow-x-auto">
-                    <table class="admin-table" data-testid="inventory-materials-table">
-                      <thead>
-                        <tr>
-                          <th class="admin-col-primary">Material Name</th>
-                          <th>Category</th>
-                          <th>Available Stock</th>
-                          <th>Minimum Stock</th>
-                          <th>Unit Cost</th>
-                          <th>Stock Status</th>
-                          <th class="text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody id="admin-inventory-tbody"></tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <div id="admin-tab-inventory" class="admin-tab-panel hidden space-y-5"></div>
 
             <!-- PAGE 4: ORDERS MANAGEMENT -->
-            <div id="admin-tab-orders" class="admin-tab-panel hidden space-y-5">
-              <div class="space-y-6">
-                <div class="admin-summary-grid-4">
-                  <div class="admin-summary-card">
-                    <span class="admin-summary-label">Total Orders</span>
-                    <span id="admin-orders-total-count" class="admin-summary-value">0</span>
-                  </div>
-                  <div class="admin-summary-card">
-                    <span class="admin-summary-label">Active Orders</span>
-                    <span id="admin-orders-active-count" class="admin-summary-value is-blue">0</span>
-                  </div>
-                  <div class="admin-summary-card">
-                    <span class="admin-summary-label">In Production</span>
-                    <span id="admin-orders-inprod-count" class="admin-summary-value is-orange">0</span>
-                  </div>
-                  <div class="admin-summary-card">
-                    <span class="admin-summary-label">Completed Orders</span>
-                    <span id="admin-orders-completed-count" class="admin-summary-value is-green">0</span>
-                  </div>
-                </div>
-                <div id="admin-active-orders-section" data-testid="admin-active-orders-section" class="admin-card overflow-hidden">
-                  <div class="px-6 py-4 border-b border-slate-200 bg-slate-50/70 flex items-center justify-between">
-                    <h3 id="admin-active-orders-heading" class="text-sm font-bold text-slate-900">Active Orders (0)</h3>
-                  </div>
-                  <div class="admin-toolbar">
-                    <div class="admin-toolbar-filters">
-                      <input id="admin-orders-search" type="search" placeholder="Search order #, customer..." class="admin-input admin-search-input" />
-                    </div>
-                  </div>
-                  <div class="overflow-x-auto">
-                    <table class="admin-table" data-testid="admin-active-orders-table">
-                      <thead>
-                        <tr>
-                          <th>Order #</th>
-                          <th>Customer</th>
-                          <th>Product &amp; Finish</th>
-                          <th>Order Stage</th>
-                          <th class="text-right">Total Amount</th>
-                        </tr>
-                      </thead>
-                      <tbody id="admin-active-orders-tbody"></tbody>
-                    </table>
-                  </div>
-                </div>
-                <div id="admin-completed-orders-section" data-testid="admin-completed-orders-section" class="admin-card overflow-hidden">
-                  <div class="px-6 py-4 border-b border-slate-200 bg-emerald-50/60 flex items-center justify-between">
-                    <h3 id="admin-completed-orders-heading" class="text-sm font-bold text-slate-900">Completed Orders (0)</h3>
-                    <span id="admin-completed-section-badge" class="px-2.5 py-1 rounded-full bg-emerald-600 text-white font-mono-tech text-xs font-bold">0 Completed</span>
-                  </div>
-                  <div class="overflow-x-auto">
-                    <table class="admin-table" data-testid="admin-completed-orders-table">
-                      <thead>
-                        <tr>
-                          <th>Order #</th>
-                          <th>Transaction Ref</th>
-                          <th>Customer</th>
-                          <th>Product &amp; Finish</th>
-                          <th>Completed Date</th>
-                          <th>Status</th>
-                          <th class="text-right">Total Amount</th>
-                        </tr>
-                      </thead>
-                      <tbody id="admin-completed-orders-tbody"></tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <div id="admin-tab-orders" class="admin-tab-panel hidden space-y-5"></div>
 
             <!-- PAGE 5: CUSTOMERS MANAGEMENT -->
-            <div id="admin-tab-customers" class="admin-tab-panel hidden space-y-5">
-              <div class="admin-card overflow-hidden">
-                <div class="admin-toolbar">
-                  <div class="admin-toolbar-filters">
-                    <input id="admin-customers-search" type="search" placeholder="Search customer name, email..." class="admin-input admin-search-input" />
-                  </div>
-                </div>
-                <div class="overflow-x-auto">
-                  <table class="admin-table">
-                    <thead>
-                      <tr>
-                        <th class="admin-col-primary">Customer Name</th>
-                        <th>Email Address</th>
-                        <th>Phone</th>
-                        <th>Delivery Address</th>
-                        <th>Orders</th>
-                        <th>Total Spent</th>
-                      </tr>
-                    </thead>
-                    <tbody id="admin-customers-tbody"></tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
+            <div id="admin-tab-customers" class="admin-tab-panel hidden space-y-5"></div>
 
             <!-- PAGE 6: VOUCHERS MANAGEMENT -->
             <div id="admin-tab-vouchers" class="admin-tab-panel hidden space-y-5">
@@ -1594,195 +1333,11 @@ $sessionPayload = [
                 </div>
               </form>
 
-              <div id="admin-vouchers-list" class="space-y-4">
-                <div class="admin-card overflow-hidden">
-                  <div class="p-5 border-b border-slate-200">
-                    <h2 id="admin-vouchers-count-heading" class="text-base font-bold text-slate-900">Issued Vouchers (0)</h2>
-                  </div>
-                  <div class="overflow-x-auto">
-                    <table class="admin-table vch-table">
-                      <thead>
-                        <tr>
-                          <th>Voucher Code</th>
-                          <th>Customer</th>
-                          <th>Eligible Product</th>
-                          <th>Discount</th>
-                          <th>Status</th>
-                          <th class="text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody id="admin-vouchers-tbody"></tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
+              <div id="admin-vouchers-list" class="space-y-4"></div>
             </div>
 
             <!-- PAGE 7: ANALYTICS & BUSINESS REPORTS -->
-            <div id="admin-tab-analytics" class="admin-tab-panel hidden space-y-6">
-              <div class="space-y-6" data-testid="admin-analytics-module">
-                <p class="text-sm text-slate-600">
-                  Sales reports include completed orders only, dated when the admin completed them. Deposits and unfinished or cancelled orders are excluded. Inventory and voucher availability remain live.
-                </p>
-                <div class="analytics-report-banner">
-                  <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                    <div class="space-y-1.5">
-                      <h2 class="font-serif-display text-xl sm:text-2xl font-bold text-slate-900">
-                        Monthly Analytics &amp; Business Report — <span id="analytics-active-period-label" class="text-[#0077CC]">November 2026</span>
-                      </h2>
-                      <p class="text-xs text-slate-700">
-                        Reporting Window: <strong id="analytics-period-start" class="font-mono-tech">2026-11-01</strong> to <strong id="analytics-period-end" class="font-mono-tech">2026-11-30</strong>
-                      </p>
-                    </div>
-                    <div class="analytics-no-print flex flex-wrap items-center gap-2 shrink-0">
-                      <button type="button" id="analytics-export-pdf-btn" data-testid="analytics-export-pdf-btn" class="px-3.5 py-2 rounded-xl bg-[#0095FF] hover:bg-[#0077CC] text-white text-xs font-semibold cursor-pointer">Download PDF Report</button>
-                      <button type="button" id="analytics-export-csv-btn" data-testid="analytics-export-csv-btn" class="px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-xs font-semibold cursor-pointer">Export CSV</button>
-                      <button type="button" id="analytics-print-report-btn" data-testid="analytics-print-report-btn" class="px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-xs font-semibold cursor-pointer">Printable Report</button>
-                    </div>
-                  </div>
-                </div>
-                <div class="admin-card p-4 analytics-no-print flex flex-wrap items-center justify-between gap-3">
-                  <div class="flex flex-wrap items-center gap-1.5">
-                    <button type="button" data-analytics-preset="this_month" class="analytics-preset-btn is-active">This Month</button>
-                    <button type="button" data-analytics-preset="last_month" class="analytics-preset-btn">Last Month</button>
-                    <button type="button" data-analytics-preset="select_month" class="analytics-preset-btn">Select Month &amp; Year</button>
-                    <button type="button" data-analytics-preset="this_year" class="analytics-preset-btn">This Year</button>
-                    <button type="button" data-analytics-preset="custom_range" class="analytics-preset-btn">Custom Date Range</button>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <button type="button" data-analytics-quick-month="2026-11" class="px-2.5 py-1 rounded-lg border border-slate-200 font-mono-tech text-xs font-semibold cursor-pointer">2026-11</button>
-                    <button type="button" data-analytics-quick-month="2026-10" class="px-2.5 py-1 rounded-lg border border-slate-200 font-mono-tech text-xs font-semibold cursor-pointer">2026-10</button>
-                    <button type="button" data-analytics-quick-month="2026-09" class="px-2.5 py-1 rounded-lg border border-slate-200 font-mono-tech text-xs font-semibold cursor-pointer">2026-09</button>
-                  </div>
-                </div>
-                <section aria-label="Monthly Business Summary Indicators" class="monthly-overview-shell" id="analytics-monthly-overview-section">
-                  <div class="monthly-overview-header">
-                    <div>
-                      <h3 class="monthly-overview-title">Monthly overview</h3>
-                      <p class="monthly-overview-subtitle">A clear view of your business performance</p>
-                    </div>
-                    <div class="monthly-overview-picker-wrap analytics-no-print">
-                      <select id="analytics-overview-period-select" data-testid="analytics-overview-period-select" class="monthly-overview-picker-select"></select>
-                    </div>
-                  </div>
-                  <div id="analytics-summary-kpi-grid" class="monthly-overview-kpi-grid" data-testid="analytics-summary-kpi-grid">
-                    <div class="monthly-overview-card is-featured" data-testid="kpi-total-revenue">
-                      <div class="monthly-overview-card-body">
-                        <p class="monthly-overview-card-label">Total revenue</p>
-                        <div class="monthly-overview-value-row">
-                          <span id="analytics-kpi-rev-val" class="monthly-overview-value is-blue">$0</span>
-                          <span id="analytics-kpi-rev-badge" class="monthly-overview-badge is-flat">No change</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="monthly-overview-card" data-testid="kpi-total-orders">
-                      <div class="monthly-overview-card-body">
-                        <p class="monthly-overview-card-label">Total orders</p>
-                        <div class="monthly-overview-value-row">
-                          <span id="analytics-kpi-ord-val" class="monthly-overview-value">0</span>
-                          <span id="analytics-kpi-ord-badge" class="monthly-overview-badge is-flat">No change</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="monthly-overview-card" data-testid="kpi-products-sold">
-                      <div class="monthly-overview-card-body">
-                        <p class="monthly-overview-card-label">Products sold</p>
-                        <div class="monthly-overview-value-row">
-                          <span id="analytics-kpi-sold-val" class="monthly-overview-value">0</span>
-                          <span id="analytics-kpi-sold-badge" class="monthly-overview-badge is-flat">No change</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="monthly-overview-card" data-testid="kpi-new-customers">
-                      <div class="monthly-overview-card-body">
-                        <p class="monthly-overview-card-label">New customers</p>
-                        <div class="monthly-overview-value-row">
-                          <span id="analytics-kpi-cust-val" class="monthly-overview-value">0</span>
-                          <span id="analytics-kpi-cust-badge" class="monthly-overview-badge is-flat">No change</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="monthly-overview-middle-grid">
-                    <div class="monthly-overview-panel" data-testid="overview-revenue-trend-panel">
-                      <h4 id="analytics-rev-trend-title" class="monthly-overview-panel-title">Revenue trend</h4>
-                      <p id="analytics-rev-trend-val" class="font-mono-tech text-lg font-bold text-[#0080FF] mt-2">$0</p>
-                    </div>
-                    <div class="monthly-overview-panel" data-testid="overview-order-status-panel">
-                      <h4 class="monthly-overview-panel-title">Order status</h4>
-                      <div class="monthly-overview-status-list">
-                        <div class="monthly-overview-status-row" data-testid="kpi-completed-orders">
-                          <span>Completed</span>
-                          <span id="analytics-status-completed" class="monthly-overview-status-count">0</span>
-                        </div>
-                        <div class="monthly-overview-status-row" data-testid="kpi-pending-orders">
-                          <span>Pending</span>
-                          <span id="analytics-status-pending" class="monthly-overview-status-count">0</span>
-                        </div>
-                        <div class="monthly-overview-status-row" data-testid="kpi-cancelled-orders">
-                          <span>Cancelled</span>
-                          <span id="analytics-status-cancelled" class="monthly-overview-status-count">0</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="monthly-overview-bottom-grid">
-                    <div class="monthly-overview-card" data-testid="kpi-average-order-value">
-                      <div class="monthly-overview-card-body">
-                        <p class="monthly-overview-card-label">Average order value</p>
-                        <span id="analytics-kpi-aov" class="monthly-overview-value">$0</span>
-                      </div>
-                    </div>
-                    <div class="monthly-overview-card" data-testid="kpi-discounts-given">
-                      <div class="monthly-overview-card-body">
-                        <p class="monthly-overview-card-label">Discounts given</p>
-                        <span id="analytics-kpi-discounts" class="monthly-overview-value">$0</span>
-                      </div>
-                    </div>
-                  </div>
-                </section>
-                <section id="analytics-best-sellers-section" class="admin-card overflow-hidden">
-                  <div class="px-6 py-4 border-b border-slate-200">
-                    <h3 id="analytics-bestsellers-heading" class="text-sm font-bold text-slate-900">Top 5 Best-Selling Products</h3>
-                  </div>
-                  <div class="overflow-x-auto">
-                    <table class="admin-table" id="analytics-best-sellers-table" data-testid="analytics-best-sellers-table">
-                      <thead>
-                        <tr>
-                          <th>Rank</th>
-                          <th>Product</th>
-                          <th>Category</th>
-                          <th>Qty Sold</th>
-                          <th>Total Revenue</th>
-                        </tr>
-                      </thead>
-                      <tbody id="analytics-best-sellers-tbody"></tbody>
-                    </table>
-                  </div>
-                </section>
-                <section id="analytics-transactions-section" class="admin-card overflow-hidden">
-                  <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-                    <h3 id="analytics-tx-heading" class="text-sm font-bold text-slate-900">Period Transaction Details</h3>
-                    <span id="analytics-tx-count" class="font-mono-tech text-xs font-bold">0 Transactions</span>
-                  </div>
-                  <div class="overflow-x-auto">
-                    <table class="admin-table" data-testid="analytics-transactions-table">
-                      <thead>
-                        <tr>
-                          <th>Order #</th>
-                          <th>Date</th>
-                          <th>Customer</th>
-                          <th>Product</th>
-                          <th>Status</th>
-                          <th class="text-right">Realized Revenue</th>
-                        </tr>
-                      </thead>
-                      <tbody id="analytics-transactions-tbody"></tbody>
-                    </table>
-                  </div>
-                </section>
-              </div>
-            </div>
+            <div id="admin-tab-analytics" class="admin-tab-panel hidden space-y-6"></div>
           </div>
         </div>
 
@@ -1805,8 +1360,6 @@ $sessionPayload = [
         </div>
       </section>
     </main>
-
-    <?php require __DIR__ . '/partials/dashboard-templates.php'; ?>
 
     <script type="module" src="assets/js/app.js"></script>
   </body>

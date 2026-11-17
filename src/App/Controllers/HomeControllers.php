@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
-use App\Models\AnalyticsReport;
 use App\Models\Product;
 use App\Models\User;
 use Library\Database;
@@ -14,21 +13,19 @@ use Library\Exceptions\ValidationException;
 
 /**
  * Part 4: HomeControllers
- * Handles Login, Logout, Dashboard rendering, and server-side POST actions in XAMPP / PHP.
+ * Handles Login, Logout, and Dashboard rendering in XAMPP / PHP.
  */
 class HomeControllers
 {
     private Database $db;
     private User $userModel;
     private Product $productModel;
-    private AnalyticsReport $analyticsModel;
 
     public function __construct(?Database $db = null)
     {
         $this->db = $db ?? Database::getInstance();
         $this->userModel = new User($this->db);
         $this->productModel = new Product($this->db);
-        $this->analyticsModel = new AnalyticsReport($this->db, $this->productModel);
     }
 
     /**
@@ -108,63 +105,38 @@ class HomeControllers
 
     /**
      * Render the Logged-In Dashboard page (`home.php` -> `views/home.php`)
-     * and process server-side checkout, order, inventory, and profile POST requests.
+     * and process server-side checkout / voucher verification POST requests.
      */
     public function home(): void
     {
         $user = currentUser();
 
-        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
-            $action = trim((string) ($_POST['action'] ?? 'checkout'));
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['action'] ?? '') === 'checkout') {
+            $customerEmail = trim((string) ($_POST['customerEmail'] ?? ($user['email'] ?? '')));
+            $voucherCode = isset($_POST['voucherCode']) ? trim((string) $_POST['voucherCode']) : null;
+            $rawItems = $_POST['cartItems'] ?? '[]';
+            $cartItems = is_string($rawItems) ? (json_decode($rawItems, true) ?: []) : (is_array($rawItems) ? $rawItems : []);
+
             try {
-                switch ($action) {
-                    case 'checkout':
-                        $customerEmail = trim((string) ($_POST['customerEmail'] ?? ($user['email'] ?? '')));
-                        $voucherCode = isset($_POST['voucherCode']) ? trim((string) $_POST['voucherCode']) : null;
-                        $rawItems = $_POST['cartItems'] ?? '[]';
-                        $cartItems = is_string($rawItems) ? (json_decode($rawItems, true) ?: []) : (is_array($rawItems) ? $rawItems : []);
-                        $pricing = $this->productModel->calculateCartOrderWithVoucher($cartItems, $voucherCode, $customerEmail);
-                        jsonResponse(['ok' => true, 'pricing' => $pricing]);
-                        break;
-
-                    case 'place_order':
-                        $result = $this->productModel->placeCartOrder($_POST);
-                        jsonResponse(['ok' => true, 'createdOrders' => $result['createdOrders'], 'pricing' => $result['pricing']]);
-                        break;
-
-                    case 'create_custom_order':
-                        $result = $this->productModel->createCustomOrder($_POST);
-                        jsonResponse(['ok' => true, 'order' => $result['order']]);
-                        break;
-
-                    case 'update_order_status':
-                        $order = $this->productModel->updateOrderStatus((string) ($_POST['orderNumber'] ?? ''), $_POST);
-                        jsonResponse(['ok' => true, 'order' => $order]);
-                        break;
-
-                    case 'record_stock_movement':
-                        $result = $this->productModel->applyMaterialStockMovement($_POST);
-                        jsonResponse(array_merge(['ok' => true], $result));
-                        break;
-
-                    case 'update_customer_profile':
-                        $profile = $this->userModel->updateCustomerProfile($_POST);
-                        jsonResponse(['ok' => true, 'customerProfile' => $profile]);
-                        break;
-                }
-            } catch (\Throwable $e) {
-                jsonResponse(['ok' => false, 'error' => $e->getMessage()], 422);
+                $pricing = $this->productModel->calculateCartOrderWithVoucher(
+                    $cartItems,
+                    $voucherCode,
+                    $customerEmail
+                );
+                jsonResponse([
+                    'ok'      => true,
+                    'pricing' => $pricing,
+                ]);
+            } catch (ValidationException $e) {
+                jsonResponse([
+                    'ok'    => false,
+                    'error' => $e->getMessage(),
+                ], 422);
             }
         }
 
         $store = $this->db->readStore();
         $products = $this->productModel->getAll();
-        $customerDirectory = $this->userModel->computeCustomerDirectory(
-            isset($store['orders']) && is_array($store['orders']) ? $store['orders'] : [],
-            isset($store['customers']) && is_array($store['customers']) ? $store['customers'] : [],
-            isset($store['customerProfile']) && is_array($store['customerProfile']) ? $store['customerProfile'] : null
-        );
-        $analyticsReport = $this->analyticsModel->generateReport();
         require dirname(__DIR__, 2) . '/views/home.php';
     }
 
