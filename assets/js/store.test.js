@@ -1121,10 +1121,13 @@ describe('Pure JavaScript & Server Store Logic Tests', () => {
     assert.ok(loginPhp.includes('id="auth-mode-signin"'));
     assert.ok(loginPhp.includes('id="auth-mode-register"'));
 
-    // 3. Automatic role detection in HomeControllers.php and User.php + DSA comments preserved
+    // 3. Automatic role detection in HomeControllers.php and User.php + DSA comments & OOP instance HashTable usage preserved
     assert.ok(homeCtrlPhp.includes('authenticate($email, $password, null)'));
     assert.ok(userPhp.includes('// ALGORITHM B2: Linear search'));
     assert.ok(userPhp.includes('// ALGORITHM B5: Hash function'));
+    assert.ok(userPhp.includes('$idHashTable = new HashTable(679);'));
+    assert.ok(userPhp.includes('$idHashTable->hashKey('));
+    assert.equal(userPhp.includes('HashTable::hashKey'), false);
 
     // 4. Direct URL protection in dashboard.js and HomeControllers.php
     assert.ok(dashboardJs.includes("if (urlRole === 'admin' && !isAdmin)"));

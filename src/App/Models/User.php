@@ -272,7 +272,8 @@ class User
 
         $passwordHash = password_hash($password, PASSWORD_DEFAULT);
         // ALGORITHM B5: Hash function — map email + timestamp seed into a 0..678 bucket offset for LR-CUS-xxx ID
-        $bucketOffset = HashTable::hashKey($email . '|' . microtime(true), 679);
+        $idHashTable = new HashTable(679);
+        $bucketOffset = $idHashTable->hashKey($email . '|' . microtime(true));
         $customerId = 'LR-CUS-' . (320 + $bucketOffset);
 
         if ($this->db->isMySqlConnected()) {
